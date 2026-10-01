@@ -10,7 +10,7 @@ El modelo necesita señal espacial: el aporte de las features geo es la pregunta
 ## Decisión
 1. **La unidad geográfica base es el barrio.** Se define con un gazetteer de las cuatro ciudades con fuente documentada (F6.1). Los nombres de barrio de los avisos se normalizan con alias y fuzzy matching; lo que no matchea va a revisión manual y no se asigna en silencio (F4.4).
 2. **Las features espaciales se calculan a nivel barrio.** Se parte del centroide del barrio y se calculan distancias a puntos de interés (POIs) de OpenStreetMap, conteos de POIs en un radio y distancia a centros de empleo (F6.3 y F6.4). El centroide sale del polígono de OSM cuando existe; si no, de Nominatim con caché, y el método usado se registra por barrio (F6.2). Los POIs se obtienen con Overpass en un snapshot fechado.
-3. **`lat` y `lon` son opcionales en todos los schemas.** Se acompañan de un flag de precisión `geo_precision ∈ {barrio, aproximada, exacta}` (F1.3). Sin coordenadas, la precisión es `barrio`. Si el aviso trae coordenadas, se usan como enriquecimiento opcional (F6.5): las mismas features calculadas desde ellas, con precisión `exacta`, y el flag llega al modelo. Cómo distinguir `aproximada` de `exacta` se define con lo observado en F3.1. [pendiente de F3.1]
+3. **`lat` y `lon` son opcionales en todos los schemas.** La precisión se registra en el flag `geo_precision ∈ {barrio, aproximada, exacta}` de `Listing` (F1.3), que se informa al modelo (F6.5). Sin coordenadas, la precisión es `barrio`. Si el aviso trae coordenadas, se usan como enriquecimiento opcional (F6.5): se calculan las mismas features desde ellas y la precisión pasa a ser `aproximada` o `exacta`, según lo que se observe en F3.1 sobre cada fuente. [pendiente de F3.1]
 
 Este ADR describe la decisión; los schemas se definen y versionan en F1, no acá.
 
@@ -26,4 +26,4 @@ Este ADR describe la decisión; los schemas se definen y versionan en F1, no ac�
 - **Exigir lat/lon en cada aviso.** Excluye los avisos sin coordenadas, condiciona la elección de fuentes y viola el principio 2.
 - **Geocodificar la dirección de cada aviso.** Depende de que el aviso traiga una dirección usable y de un servicio de geocodificación con sus límites de uso, y produciría coordenadas inferidas que parecen más precisas de lo que son. [pendiente de F3.1: qué campos de ubicación expone cada fuente]
 - **Usar solo la ciudad.** Pierde la señal espacial y deja sin respuesta la pregunta de investigación de F10.3.
-- **Basar la geografía en la zona fiscal catastral.** Se evalúa como feature o benchmark opcional (F6.6), no como base.
+- **Basar la geografía en la zona fiscal catastral.** No se evaluó todavía cuánta señal aporta, así que no se adopta como base; queda como feature o benchmark opcional (F6.6).

@@ -19,7 +19,7 @@ Los datos que hacen falta para decidir, todos [dato pendiente de F3.1]:
 - La distribución de los montos crudos por ciudad en los avisos con moneda explícita, para saber si las escalas de cada moneda se separan lo suficiente.
 
 ## Consecuencias
-- **Mientras esté pendiente no se asigna moneda de forma implícita.** `currency=None` se preserva, y F4.2 solo convierte los avisos con moneda explícita.
+- **Medida transitoria, no una preferencia entre alternativas:** mientras la decisión esté pendiente no se asigna moneda de forma implícita. `currency=None` se preserva, y F4.2 solo convierte los avisos con moneda explícita.
 - **El tratamiento intermedio de esos avisos lo define la implementación de F4.2**, de modo que la decisión de este ADR se pueda aplicar después sin volver a scrapear. Para eso se conserva el texto crudo del precio (F1.2).
 - **Este ADR se actualiza** (estado y decisión) cuando F3.1 aporte los datos, y si corresponde se ajustan F4.2 y F4.6. También pueden aportarlos los fixtures reales de F3.4.
 
@@ -32,12 +32,14 @@ Todavía no se descartó ninguna. Se listan las candidatas con sus ventajas y de
 
 **B. Inferir la moneda por la magnitud, con umbrales por ciudad.**
 - A favor: recupera volumen, y es automático y reproducible.
-- En contra: una moneda mal asignada cambia la escala del precio. Los umbrales dependen de la distribución de precios de cada ciudad [dato pendiente de F3.1/F7], y puede haber una zona de solape donde ambas monedas son plausibles, que los umbrales no resuelven.
-- Riesgo de leakage: los umbrales se derivan de la distribución de precios, es decir, de información del target. Si se calculan sobre todo el dataset, filtran información de los folds de validación y test (principio 4 del ROADMAP). Tendrían que calcularse solo con el fold de entrenamiento, o fijarse a priori con una justificación que hoy no existe. Además, umbrales por ciudad multiplican parámetros en ciudades con pocos avisos.
+- En contra: una moneda mal asignada cambia la escala del precio. Los umbrales dependen de la distribución de precios de cada ciudad [dato pendiente de F3.1/F7], y es posible que exista una zona de solape donde ambas monedas sean plausibles, que los umbrales no resolverían. [dato pendiente de F3.1/F7]
+- Riesgo de leakage: los umbrales se derivan de la distribución de precios, es decir, de información del target. Si se calculan sobre todo el dataset, filtran información de los folds de validación y test (principio 4 del ROADMAP). Tendrían que calcularse solo con el fold de entrenamiento, o fijarse a priori con una justificación que hoy no existe. El mismo argumento vale para cualquier umbral derivado de la distribución de precios, como los rangos plausibles de USD/m² por ciudad de F4.6. Además, umbrales por ciudad multiplican parámetros en ciudades con pocos avisos.
 
 **C. Revisión manual.**
 - A favor: es la más fiable caso por caso, y permite aprender cómo cada fuente escribe sus precios.
 - En contra: no escala, porque el equipo son dos personas (cuántos casos: [dato pendiente de F3.1]). Las decisiones manuales son subjetivas, así que tendrían que guardarse en un archivo versionado para que el dataset siga siendo reproducible (principio 6 del ROADMAP).
 
 **D. Buscar la moneda en otro campo del aviso antes de recurrir a A, B o C.**
-- No es excluyente con las anteriores. Depende de lo que exponga cada fuente. [pendiente de F3.1]
+- A favor: usa información que el propio aviso ya trae, sin estimaciones, y podría recuperar volumen sin los riesgos de B.
+- En contra: depende de lo que exponga cada fuente y podría no resolver todos los casos ni ser homogénea entre fuentes; una moneda mencionada en texto libre podría referirse a otro monto. [pendiente de F3.1]
+- No es excluyente con las anteriores.
