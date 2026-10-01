@@ -186,6 +186,10 @@ def test_parse_price_range_returns_lower_bound_as_from_price(raw, amount, curren
         # Dos monedas: gana la primera expresión.
         ("USD 150.000 / Gs. 1.100.000.000", D(150000), "USD"),
         ("Gs. 1.100.000.000 (USD 150.000)", D(1100000000), "PYG"),
+        # Monedas distintas en los extremos: es doble precio, no un rango.
+        ("U$S 150.000 - Gs. 1.100.000.000", D(150000), "USD"),
+        ("150.000 USD - 1.100.000.000 Gs", D(150000), "USD"),
+        ("Gs. 1.100.000.000 hasta USD 150.000", D(1100000000), "PYG"),
         # Un segundo número que no es un rango (menor, o sin conector) no marca "desde".
         ("USD 150.000 y 2 dormitorios", D(150000), "USD"),
         ("USD 150.000 negociable 3 dormitorios", D(150000), "USD"),

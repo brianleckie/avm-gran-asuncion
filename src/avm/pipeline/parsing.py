@@ -6,6 +6,8 @@ contra fixtures reales (F3.4). Esperan el texto del campo (precio o superficie),
 completo: ante varias expresiones gana la primera.
 
 Reglas de números (helper `_parse_number`)
+El formato "." miles / "," decimal ("convención paraguaya") es un supuesto de la tarea F4.1, no un
+hecho verificado: se valida contra fixtures reales en F3.4.
 - Si aparecen "." y ",", el último de los dos es el decimal y el otro separa miles
   ("1.200,50" y "1,200.50" valen 1200,50).
 - Solo ".": separa miles (convención paraguaya) si el primer grupo tiene 1-3 dígitos, no empieza
@@ -20,8 +22,9 @@ Reglas de números (helper `_parse_number`)
 
 Reglas de parse_price
 - Moneda: USD ("usd", "u$s", "u$d", "us$", "u$", "dólares") o PYG ("gs", "g" pegada a un número,
-  "₲", "guaraníes", "pyg"). Un "$" solo NO se interpreta: currency=None. Si hay varias monedas
-  gana la primera. NO se adivina la moneda por magnitud: eso es una decisión del pipeline y
+  "₲", "guaraníes", "pyg"). Un "$" solo NO se interpreta: currency=None. Si el texto mezcla
+  monedas distintas (doble precio, "USD 150.000 / Gs. 1.100.000.000") gana la primera expresión y
+  no se lee como rango. NO se adivina la moneda por magnitud: es una decisión del pipeline y
   queda pendiente (ver ROADMAP, F4.2).
 - Palabras de magnitud: "mil" (x10^3), "millón/millones/mill." (x10^6), "mil millones" (x10^9).
 - "consultar", "a convenir", "a tratar" o similares, sin ninguna moneda, y también el texto
@@ -203,6 +206,11 @@ def _detect_currency(text: str) -> Currency | None:
     return "USD" if match.lastgroup == "usd" else "PYG"
 
 
+def _mixes_currencies(text: str) -> bool:
+    """True si aparecen USD y PYG en el mismo texto (doble precio, no un rango)."""
+    return len({match.lastgroup for match in _CURRENCY.finditer(text)}) > 1
+
+
 def _is_negative(text: str, start: int) -> bool:
     """True si un "-" pegado al número lo niega ("USD -150.000"), y no es un guion separador."""
     if start == 0 or text[start - 1] != "-":
@@ -250,7 +258,7 @@ def parse_price(raw: str) -> ParsedPrice | None:
 
     amount = first.scaled
     is_from_price = _FROM.search(text) is not None
-    if len(quantities) > 1:
+    if len(quantities) > 1 and not _mixes_currencies(text):
         lower_bound = _range_lower_bound(text, first, quantities[1])
         if lower_bound is not None:
             amount, is_from_price = lower_bound, True
