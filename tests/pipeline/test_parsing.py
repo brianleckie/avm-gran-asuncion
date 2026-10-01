@@ -9,6 +9,8 @@ from dataclasses import FrozenInstanceError
 from decimal import Decimal
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from avm.pipeline.parsing import ParsedArea, ParsedPrice, parse_area, parse_price
 
@@ -189,6 +191,8 @@ def test_parse_price_range_returns_lower_bound_as_from_price(raw, amount, curren
         ("USD 150.000 negociable 3 dormitorios", D(150000), "USD"),
         # "a convenir" con moneda explícita sí se parsea.
         ("USD 150.000 a convenir", D(150000), "USD"),
+        # Segundo número mal formado: no hay rango y se queda el primero.
+        ("USD 100.000 - 1.2.3", D(100000), "USD"),
     ],
 )
 def test_parse_price_first_expression_wins_and_is_not_a_range(raw, amount, currency):
@@ -225,6 +229,8 @@ PRICE_NONE_CASES = [
     "USD 1.2.3",
     "USD 1.20.000",
     "USD 12,3,4",
+    "USD 1.2,3",
+    "USD 1,2.3",
     "USD " + "9" * 40,
     "---",
     "!!!",
@@ -402,6 +408,8 @@ AREA_NONE_CASES = [
     "1000x1000",
     # Números mal formados.
     "1.2.3 m²",
+    "1.2.3x30",
+    "12x1.2.3",
     "9" * 40 + " m²",
     # Tres dimensiones: no es un lote rectangular (regresión: un lookahead se evadía por backtrack).
     "10x12x3",
@@ -428,3 +436,97 @@ def test_parsed_area_is_frozen_and_keeps_raw():
     assert result.raw == raw
     with pytest.raises(FrozenInstanceError):
         result.m2 = D(1)  # type: ignore[misc]
+
+
+# --------------------------------------------------------------------------------------------
+# Property tests (hypothesis)
+# --------------------------------------------------------------------------------------------
+
+# Texto arbitrario, texto sesgado a los caracteres del dominio y frases armadas con fragmentos
+# reales: estos últimos llegan a más ramas del parser que el texto puramente aleatorio.
+ARBITRARY_TEXT = st.text(max_size=80)
+DOMAIN_ALPHABET_TEXT = st.text(alphabet="0123456789.,-–xX×mtsUSDGgd$₲²/: ", max_size=40)
+
+
+def _phrases(fragments: str):
+    """Frases de hasta 8 fragmentos (separados por "|" en `fragments`) unidos por espacios."""
+    return st.lists(st.sampled_from(fragments.split("|")), max_size=8).map(" ".join)
+
+
+PRICE_PHRASES = _phrases(
+    "USD|U$S|US$|u$d|Gs.|G|₲|$|guaraníes|dólares|mil|millones|millón|mill.|desde|a partir de"
+    "|hasta|entre|y|a|-|–|.-|consultar|a convenir|150.000|1.200.000.000|1,5|150,000|120,5|12|30"
+    "|0|100000|2 dormitorios"
+)
+AREA_PHRASES = _phrases(
+    "m²|m2|mts2|mt2|mts|metros cuadrados|x|×|-|–|a|y|hasta|entre|120|360|1.200|120,5|12|30|0|-5"
+    "|100000|100001|construidos|cubiertos|terreno|lote|superficie total|construcción|de|frente"
+    "|3 dormitorios"
+)
+# "<cue> <número> <unidad> <cue>" y "<cue> AxB <cue>": mayormente interpretables, con variaciones.
+AREA_TEMPLATES = st.builds(
+    "{} {} {} {}".format,
+    st.sampled_from(["", "terreno", "construcción", "lote de", "superficie total:", "120 m2 -"]),
+    st.sampled_from(["120", "1.200", "120,5", "360", "12 x 30", "12x30", "0", "100.001", "-5"]),
+    st.sampled_from(["m²", "m2", "mts2", "mt2", "metros cuadrados", "mts", "", "m2 -"]),
+    st.sampled_from(["", "construidos", "cubiertos", "de terreno", "lote", "y 150 m2"]),
+)
+ANY_PRICE_TEXT = st.one_of(ARBITRARY_TEXT, DOMAIN_ALPHABET_TEXT, PRICE_PHRASES)
+ANY_AREA_TEXT = st.one_of(ARBITRARY_TEXT, DOMAIN_ALPHABET_TEXT, AREA_PHRASES, AREA_TEMPLATES)
+
+
+@settings(max_examples=500, deadline=None)
+@given(raw=ANY_PRICE_TEXT)
+def test_parse_price_never_raises_and_amount_is_positive(raw):
+    result = parse_price(raw)
+    if result is not None:
+        assert isinstance(result.amount, Decimal)
+        assert result.amount > 0
+        assert result.currency in ("USD", "PYG", None)
+        assert result.raw == raw
+
+
+@settings(max_examples=500, deadline=None)
+@given(raw=ANY_AREA_TEXT)
+def test_parse_area_never_raises_and_m2_is_in_range(raw):
+    result = parse_area(raw)
+    if result is not None:
+        assert isinstance(result.m2, Decimal)
+        assert 0 < result.m2 <= 100_000
+        assert result.kind in ("construida", "terreno", None)
+        assert result.raw == raw
+
+
+@given(n=st.integers(min_value=1, max_value=10**12))
+def test_parse_price_roundtrips_paraguayan_thousands(n):
+    result = parse_price(f"USD {n:,}".replace(",", "."))
+    assert result is not None
+    assert (result.amount, result.currency, result.is_from_price) == (D(n), "USD", False)
+
+
+@given(n=st.integers(min_value=1, max_value=10**9))
+def test_parse_price_roundtrips_magnitude_words(n):
+    thousands = parse_price(f"USD {n} mil")
+    millions = parse_price(f"Gs. {n} millones")
+    assert thousands is not None
+    assert millions is not None
+    assert thousands.amount == D(n) * 1_000
+    assert millions.amount == D(n) * 1_000_000
+
+
+@given(n=st.integers(min_value=1, max_value=100_000))
+def test_parse_area_roundtrips_paraguayan_thousands(n):
+    result = parse_area(f"{n:,} m²".replace(",", "."))
+    assert result is not None
+    assert result.m2 == D(n)
+
+
+@given(
+    side_a=st.integers(min_value=1, max_value=316), side_b=st.integers(min_value=1, max_value=316)
+)
+def test_parse_area_dimensions_are_the_product_of_the_sides(side_a, side_b):
+    result = parse_area(f"{side_a}x{side_b}")
+    if side_a * side_b <= 100_000:
+        assert result == ParsedArea(D(side_a * side_b), "terreno", f"{side_a}x{side_b}")
+    else:
+        assert result is None

@@ -108,9 +108,9 @@ class _Quantity:
     factor: Decimal | None  # None si no trae palabra de magnitud
 
     @property
-    def scaled(self) -> Decimal | None:
-        if self.number is None:
-            return None
+    def scaled(self) -> Decimal:
+        """Número por su magnitud. Solo para tokens bien formados: los llamadores ya filtraron."""
+        assert self.number is not None
         return self.number * (self.factor if self.factor is not None else Decimal(1))
 
 
@@ -217,7 +217,7 @@ def _is_range_connector(segment: str) -> bool:
 
 def _range_lower_bound(text: str, first: _Quantity, second: _Quantity) -> Decimal | None:
     """Límite inferior si `first` y `second` forman un rango; None si no lo forman."""
-    if first.number is None or second.number is None:
+    if second.number is None:  # `first` ya se validó en parse_price
         return None
     if not _is_range_connector(text[first.end : second.start]):
         return None
@@ -227,10 +227,7 @@ def _range_lower_bound(text: str, first: _Quantity, second: _Quantity) -> Decima
         reread = _parse_number(first.token, has_magnitude=True)
         if reread is not None and reread <= second.number:
             lower = reread * second.factor
-    upper = second.scaled
-    if lower is None or upper is None or upper < lower:
-        return None
-    return lower
+    return lower if second.scaled >= lower else None
 
 
 def parse_price(raw: str) -> ParsedPrice | None:
@@ -258,7 +255,7 @@ def parse_price(raw: str) -> ParsedPrice | None:
         if lower_bound is not None:
             amount, is_from_price = lower_bound, True
 
-    if amount is None or amount <= 0:
+    if amount <= 0:
         return None
     return ParsedPrice(amount=amount, currency=currency, is_from_price=is_from_price, raw=raw)
 
