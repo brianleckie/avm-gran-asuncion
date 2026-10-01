@@ -1,0 +1,18 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      # Tope de 500 KB: evita subir HTML crudo o datasets por accidente.
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-yaml
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Mantener este rev alineado con la versión de ruff de uv.lock; si se desfasan: pre-commit autoupdate.
+    rev: v0.16.9
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format

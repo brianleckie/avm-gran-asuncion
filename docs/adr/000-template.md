@@ -1,6 +1,6 @@
 # ADR-NNN: <título>
 - Estado: propuesto | aceptado | reemplazado por ADR-XXX
-- Autores: 
+- Autores:
 
 ## Contexto
 ## Decisión

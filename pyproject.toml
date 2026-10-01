@@ -9,6 +9,16 @@ dependencies = [
     "pydantic>=2",
 ]
 
+[dependency-groups]
+# Sin pinear: las versiones exactas las fija uv.lock. Runtime mínimo; el resto entra cuando una tarea lo necesite.
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "pre-commit",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -16,3 +26,27 @@ build-backend = "hatchling.build"
 # El nombre del proyecto (avm-gran-asuncion) no coincide con el paquete (avm): hay que indicarlo.
 [tool.hatch.build.targets.wheel]
 packages = ["src/avm"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "N"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# NO usar `strict = true` dentro de [[tool.mypy.overrides]]: no falla, pero mypy 2.3.1 lo aplica a
+# todos los módulos (comprobado). Por eso strict va global y mypy se corre solo sobre
+# src/avm/contract (ver `files`). Correr `mypy src/` o `mypy .` tipa todo en modo estricto.
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src/avm/contract"]
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
