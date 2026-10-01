@@ -25,6 +25,7 @@ htmlcov/
 # --- Caches de herramientas ---
 .ruff_cache/
 .pytest_cache/
+.hypothesis/
 .mypy_cache/
 .ipynb_checkpoints/
 

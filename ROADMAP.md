@@ -52,8 +52,11 @@
 
 ## F4 — Limpieza y normalización
 - [ ] F4.1 (B) Parseo de precios: "USD 150.000", "U$S 150 mil", "Gs. 1.200.000.000", "consultar" → null
+  → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
 - [ ] F4.2 (B) Conversión a USD con cotización BCP de la fecha de scrape, guardando moneda y monto originales
+  → decisión pendiente: qué hacer con `currency=None` (precio sin moneda explícita). `parse_price` no la adivina por magnitud; inferirla o descartar el aviso se resuelve acá, en el pipeline
 - [ ] F4.3 (B) m²: resolver construidos vs terreno, detectar intercambios y unidades erróneas
+  → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
 - [ ] F4.4 (B) Normalización de barrios: gazetteer, alias ("V. Morra", "Villa Morra") y fuzzy matching (rapidfuzz). Lo que no matchea va a revisión manual, no se asigna en silencio
 - [ ] F4.5 (B) Extracción de features desde la descripción (regex primero): piscina, quincho, a estrenar, condominio/barrio cerrado, **pavimento/empedrado/tierra**, ascensor, amenities
 - [ ] F4.6 (B) Reglas de outliers: USD/m² fuera de rango plausible por ciudad, errores de tipeo, alquileres colados
