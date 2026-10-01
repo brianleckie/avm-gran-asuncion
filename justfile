@@ -11,9 +11,9 @@ default:
 install:
     uv sync
 
-# Corre los tests
+# Corre los tests; exige ≥ 95 % de cobertura (líneas y ramas) sobre avm.pipeline.parsing (adelanto de F4.1/F4.3)
 test:
-    uv run pytest
+    uv run pytest --cov=avm.pipeline.parsing --cov-branch --cov-report=term-missing --cov-fail-under=95
 
 # Análisis estático: ruff (lint + formato) y mypy estricto sobre src/avm/contract
 lint:

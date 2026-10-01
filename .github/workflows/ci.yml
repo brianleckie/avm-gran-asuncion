@@ -35,5 +35,6 @@ jobs:
       - name: mypy (contract, modo estricto)
         run: uv run mypy src/avm/contract
 
+      # Cobertura ≥ 95 % solo sobre el módulo de parsers; el umbral se amplía cuando haya más módulos.
       - name: pytest
-        run: uv run pytest
+        run: uv run pytest --cov=avm.pipeline.parsing --cov-branch --cov-report=term-missing --cov-fail-under=95
