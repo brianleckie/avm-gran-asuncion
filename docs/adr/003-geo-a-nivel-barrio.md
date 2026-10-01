@@ -12,7 +12,7 @@ El modelo necesita señal espacial: el aporte de las features geo es la pregunta
 2. **Las features espaciales se calculan a nivel barrio.** Se parte del centroide del barrio y se calculan distancias a puntos de interés (POIs) de OpenStreetMap, conteos de POIs en un radio y distancia a centros de empleo (F6.3 y F6.4). El centroide sale del polígono de OSM cuando existe; si no, de Nominatim con caché, y el método usado se registra por barrio (F6.2). Los POIs se obtienen con Overpass en un snapshot fechado.
 3. **`lat` y `lon` son opcionales en todos los schemas.** La precisión se registra en el flag `geo_precision ∈ {barrio, aproximada, exacta}` de `Listing` (F1.3), que se informa al modelo (F6.5). Sin coordenadas, la precisión es `barrio`. Si el aviso trae coordenadas, se usan como enriquecimiento opcional (F6.5): se calculan las mismas features desde ellas y la precisión pasa a ser `aproximada` o `exacta`, según lo que se observe en F3.1 sobre cada fuente. [pendiente de F3.1]
 
-Este ADR describe la decisión; los schemas se definen y versionan en F1, no acá.
+Este ADR describe la decisión; los schemas se definen y versionan en F1, no acá. F6.5 del ROADMAP habla de precisión `exacta`: si el ADR se acepta, quedaría por alinear con `aproximada` o `exacta`.
 
 ## Consecuencias
 - **Las features geo no discriminan dentro de un mismo barrio.** Dos propiedades del mismo barrio reciben los mismos valores de distancia y de conteo, aunque una esté sobre una avenida y la otra no. Esto acota lo que puede mostrar la ablation geo (F10.3) y debe figurar en limitaciones (F6.7 y F15.2).

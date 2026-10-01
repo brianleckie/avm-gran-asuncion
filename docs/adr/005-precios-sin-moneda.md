@@ -39,7 +39,7 @@ Todavía no se descartó ninguna. Se listan las candidatas con sus ventajas y de
 - A favor: es la más fiable caso por caso, y permite aprender cómo cada fuente escribe sus precios.
 - En contra: no escala, porque el equipo son dos personas (cuántos casos: [dato pendiente de F3.1]). Las decisiones manuales son subjetivas, así que tendrían que guardarse en un archivo versionado para que el dataset siga siendo reproducible (principio 6 del ROADMAP).
 
-**D. Buscar la moneda en otro campo del aviso antes de recurrir a A, B o C.**
-- A favor: usa información que el propio aviso ya trae, sin estimaciones, y podría recuperar volumen sin los riesgos de B.
+**D. Buscar la moneda en otro campo del aviso, como paso complementario a A, B o C.**
+- A favor: si la fuente la expone, usaría información que el propio aviso ya trae, sin estimaciones, y podría recuperar volumen.
 - En contra: depende de lo que exponga cada fuente y podría no resolver todos los casos ni ser homogénea entre fuentes; una moneda mencionada en texto libre podría referirse a otro monto. [pendiente de F3.1]
 - No es excluyente con las anteriores.
