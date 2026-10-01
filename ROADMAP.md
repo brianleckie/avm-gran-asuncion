@@ -20,7 +20,7 @@
 - [x] F0.2 (B) Tooling Python: uv, ruff (lint+format), pytest, mypy en `contract/`, pre-commit
 - [x] F0.3 (B) Task runner (`justfile` o `Makefile`): `scrape`, `build-dataset`, `train`, `evaluate`, `serve`, `test`
 - [ ] F0.4 (B/O) ADRs iniciales en `docs/adr/`: 001 precio publicado · 002 alcance de tipos de inmueble · 003 geo a nivel barrio · 004 normalización de moneda
-- [ ] F0.5 (B) CI con GitHub Actions: ruff + pytest en cada PR
+- [x] F0.5 (B) CI con GitHub Actions: ruff + pytest en cada PR
 - [ ] F0.6 (B/O) Flujo git: `main` protegido, ramas por tarea `f3.2-parser-infocasas`, PRs revisados por el otro
 
 ## F1 — Contrato de datos (bloqueante para todo lo demás)

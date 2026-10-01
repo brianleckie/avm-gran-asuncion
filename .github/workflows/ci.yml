@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # setup-uv no publica un tag flotante v10: se pinea la versión exacta.
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      # --locked falla si uv.lock no está al día con pyproject.toml.
+      - name: Sincronizar dependencias
+        run: uv sync --locked
+
+      - name: ruff check
+        run: uv run ruff check .
+
+      - name: ruff format --check
+        run: uv run ruff format --check .
+
+      - name: mypy (contract, modo estricto)
+        run: uv run mypy src/avm/contract
+
+      - name: pytest
+        run: uv run pytest
