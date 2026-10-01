@@ -1,9 +1,9 @@
-"""Parsers de texto crudo de avisos: precio (adelanto de F4.1).
+"""Parsers de texto crudo de avisos: precio (adelanto de F4.1) y superficie (adelanto de F4.3).
 
 Son funciones puras, sin red ni estado. Devuelven dataclasses propias de este módulo y no usan
 `avm.contract`: la adaptación al contrato se hace en F1. Es un parser inicial, todavía NO validado
-contra fixtures reales (F3.4). Esperan el texto del campo de precio, no el aviso completo: ante
-varios números gana el primero.
+contra fixtures reales (F3.4). Esperan el texto del campo (precio o superficie), no el aviso
+completo: ante varias expresiones gana la primera.
 
 Reglas de números (helper `_parse_number`)
 - Si aparecen "." y ",", el último de los dos es el decimal y el otro separa miles
@@ -34,6 +34,23 @@ Reglas de parse_price
   primero no es un rango ("USD 150.000 y 2 dormitorios"). Descartar o no los is_from_price es
   decisión del pipeline.
 - Monto <= 0 o negativo ("USD -150.000"): None.
+
+Reglas de parse_area (los números siguen las mismas reglas de arriba, sin palabras de magnitud)
+- Hace falta una unidad cuadrada ("m2", "m²", "mt2", "mts2", "mts²", "metros cuadrados") o unas
+  dimensiones "AxB" ("12x30", "12 x 30 mts", "12×30"). Un número solo ("120") o una medida lineal
+  ("120 mts", "12 mts de frente") no es una superficie: None. Tres dimensiones ("10x12x3"): None.
+- Dimensiones: m2 = A x B. El tipo por defecto es "terreno" (dimensiones de lote).
+- Tipo por palabras cercanas, en una ventana de 25 caracteres a cada lado que se corta en el
+  dígito más próximo: "construidos/cubiertos/edificados/construcción" -> "construida";
+  "terreno/lote/superficie total" -> "terreno". Gana la pista MÁS CERCANA a la expresión; si las
+  de ambos lados empatan con tipos distintos, kind=None. Sin pistas: None (en dimensiones,
+  "terreno").
+- Con varias expresiones ("120 m² construidos sobre terreno de 360 m²") se devuelve la primera;
+  la función no devuelve listas.
+- Rangos de superficie ("120 - 150 m²", "entre 120 y 150 m²", "120 m² - 150 m²"): None, porque
+  ParsedArea no tiene flag de "desde". Otros números pegados ("120 m² - 3 dormitorios") no son
+  un rango.
+- Fuera de (0, 100.000] m2 ("0 m²", "-120 m²", "100.001 m²"): None. No se cubren hectáreas.
 """
 
 from __future__ import annotations
@@ -45,8 +62,11 @@ from decimal import Decimal
 from typing import Literal
 
 Currency = Literal["USD", "PYG"]
+AreaKind = Literal["construida", "terreno"]
 
 _MAX_NUMBER_LENGTH = 30
+_MAX_AREA_M2 = Decimal(100_000)
+_CUE_WINDOW = 25
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +76,15 @@ class ParsedPrice:
     amount: Decimal
     currency: Currency | None
     is_from_price: bool
+    raw: str
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedArea:
+    """Superficie en m² tal como la publica el aviso."""
+
+    m2: Decimal
+    kind: AreaKind | None
     raw: str
 
 
@@ -232,3 +261,94 @@ def parse_price(raw: str) -> ParsedPrice | None:
     if amount is None or amount <= 0:
         return None
     return ParsedPrice(amount=amount, currency=currency, is_from_price=is_from_price, raw=raw)
+
+
+# --------------------------------------------------------------------------------------------
+# parse_area
+# --------------------------------------------------------------------------------------------
+
+_SQUARE_UNIT = r"m(?:ts?|etros?)?\.?\s*(?:2|cuadrados?)(?![a-z0-9])"
+_AREA = re.compile(rf"(?P<token>[0-9][0-9.,]*)\s*{_SQUARE_UNIT}")
+# Cadena "AxB" ("12x30", "12 x 30 mts", "12×30") con unidad lineal opcional. Se captura la cadena
+# entera y después se exige que tenga exactamente 2 lados: un lookahead contra la tercera
+# dimensión se evade por backtracking ("10x12x3" -> 10x1). Los cuantificadores posesivos (*+) y el
+# lookbehind impiden que el match empiece o termine a mitad de un número.
+_DIMENSIONS = re.compile(
+    r"(?<![0-9.,])(?P<chain>[0-9][0-9.,]*+(?:\s*[x×]\s*[0-9][0-9.,]*+)+)"
+    r"(?:\s*(?:mts?|metros|m)(?![a-z0-9]))?"
+)
+_DIMENSION_SEPARATOR = re.compile(r"\s*[x×]\s*")
+_RANGE_BEFORE_AREA = re.compile(r"[0-9][0-9.,]*(?:\s*[-–—]|\s+(?:a|al|hasta|y|e)(?![a-z]))\s*$")
+_RANGE_AFTER_AREA = re.compile(
+    rf"(?:\s*[-–—]|\s+(?:a|al|hasta|y|e)(?![a-z]))\s*[0-9][0-9.,]*\s*{_SQUARE_UNIT}"
+)
+_KIND_CUES = re.compile(
+    r"(?P<built>(?<![a-z])(?:construid[oa]s?|construcci[oó]n|cubiert[oa]s?|edificad[oa]s?)(?![a-z]))"
+    r"|(?P<land>(?<![a-z])(?:terrenos?|lotes?|superficie\s+total|sup\.?\s+total)(?![a-z]))"
+)
+
+
+def _nearest_cue(window: str, *, after: bool) -> tuple[AreaKind, int] | None:
+    """Pista de tipo más cercana a la expresión dentro de `window`, con su distancia en chars."""
+    matches = list(_KIND_CUES.finditer(window))
+    if not matches:
+        return None
+    match = matches[0] if after else matches[-1]
+    distance = match.start() if after else len(window) - match.end()
+    return ("construida" if match.lastgroup == "built" else "terreno"), distance
+
+
+def _detect_kind(text: str, start: int, end: int, *, default: AreaKind | None) -> AreaKind | None:
+    """Tipo de superficie según las palabras cercanas; `default` solo si no hay ninguna pista."""
+    before_window = re.split(r"[0-9]", text[max(0, start - _CUE_WINDOW) : start])[-1]
+    after_window = re.split(r"[0-9]", text[end : end + _CUE_WINDOW], maxsplit=1)[0]
+    before = _nearest_cue(before_window, after=False)
+    after = _nearest_cue(after_window, after=True)
+    if before is None and after is None:
+        return default
+    if before is not None and after is not None and before[0] != after[0]:
+        if before[1] == after[1]:
+            return None
+        return before[0] if before[1] < after[1] else after[0]
+    cue = before or after
+    return cue[0] if cue is not None else None
+
+
+def parse_area(raw: str) -> ParsedArea | None:
+    """Interpreta una superficie publicada ("120 m²", "1.200 m2", "12x30", "360 m² de terreno").
+
+    Devuelve None si no hay una superficie interpretable en (0, 100.000] m² (ver reglas en el
+    docstring del módulo). `raw` se conserva tal cual en el resultado.
+    """
+    text = _normalize(raw)
+    dimensions = _DIMENSIONS.search(text)
+    square = _AREA.search(text)
+
+    if dimensions is not None and (square is None or dimensions.start() <= square.start()):
+        sides = _DIMENSION_SEPARATOR.split(dimensions.group("chain"))
+        if len(sides) != 2:  # tres o más dimensiones: no es un lote rectangular
+            return None
+        side_a = _parse_number(sides[0], has_magnitude=False)
+        side_b = _parse_number(sides[1], has_magnitude=False)
+        if side_a is None or side_b is None:
+            return None
+        m2 = side_a * side_b
+        kind = _detect_kind(text, dimensions.start(), dimensions.end(), default="terreno")
+    elif square is not None:
+        if _is_negative(text, square.start()):
+            return None
+        if _RANGE_BEFORE_AREA.search(text[: square.start()]):
+            return None
+        if _RANGE_AFTER_AREA.match(text, square.end()):
+            return None
+        number = _parse_number(square.group("token"), has_magnitude=False)
+        if number is None:
+            return None
+        m2 = number
+        kind = _detect_kind(text, square.start(), square.end(), default=None)
+    else:
+        return None
+
+    if not 0 < m2 <= _MAX_AREA_M2:
+        return None
+    return ParsedArea(m2=m2, kind=kind, raw=raw)

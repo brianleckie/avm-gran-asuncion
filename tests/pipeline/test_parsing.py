@@ -10,7 +10,7 @@ from decimal import Decimal
 
 import pytest
 
-from avm.pipeline.parsing import ParsedPrice, parse_price
+from avm.pipeline.parsing import ParsedArea, ParsedPrice, parse_area, parse_price
 
 D = Decimal
 
@@ -249,3 +249,182 @@ def test_parsed_price_is_frozen_and_amount_is_decimal():
     assert isinstance(result.amount, Decimal)
     with pytest.raises(FrozenInstanceError):
         result.amount = D(1)  # type: ignore[misc]
+
+
+# --------------------------------------------------------------------------------------------
+# parse_area
+# --------------------------------------------------------------------------------------------
+
+# (raw, m2, kind)
+AREA_REQUESTED_FORMATS = [
+    ("120 m²", D(120), None),
+    ("120m2", D(120), None),
+    ("120 mts2", D(120), None),
+    ("120 mt2", D(120), None),
+    ("1.200 m²", D(1200), None),
+    ("120,5 m²", D("120.5"), None),
+    ("12x30", D(360), "terreno"),
+    ("12 x 30 mts", D(360), "terreno"),
+]
+
+
+@pytest.mark.parametrize(("raw", "m2", "kind"), AREA_REQUESTED_FORMATS)
+def test_parse_area_requested_formats(raw, m2, kind):
+    assert parse_area(raw) == ParsedArea(m2, kind, raw)
+
+
+AREA_UNIT_VARIANTS = [
+    ("120M2", D(120)),
+    ("120 M²", D(120)),
+    ("120 mts²", D(120)),
+    ("120 m 2", D(120)),
+    ("120 metros cuadrados", D(120)),
+    ("1.200 metros cuadrados", D(1200)),
+    ("120 m². aprox.", D(120)),
+    ("12.5 m²", D("12.5")),
+    # Coma + 3 dígitos sin magnitud: miles anglosajón, como en los precios.
+    ("1,200 m²", D(1200)),
+    ("3 dormitorios, 120 m²", D(120)),
+]
+
+
+@pytest.mark.parametrize(("raw", "m2"), AREA_UNIT_VARIANTS)
+def test_parse_area_unit_and_number_variants(raw, m2):
+    result = parse_area(raw)
+    assert result is not None
+    assert result.m2 == m2
+
+
+AREA_KINDS = [
+    ("120 m² construidos", "construida"),
+    ("120 m2 cubiertos", "construida"),
+    ("120 m2 edificados", "construida"),
+    ("Superficie construida: 120 m²", "construida"),
+    ("Construcción: 120 m²", "construida"),
+    ("Terreno: 360 m²", "terreno"),
+    ("360 m² de terreno", "terreno"),
+    ("Lote de 360 m²", "terreno"),
+    ("Superficie total: 360 m²", "terreno"),
+    ("Sup. total 360 m2", "terreno"),
+    ("360 metros cuadrados de terreno", "terreno"),
+    # Con varias expresiones gana la primera, con la pista más cercana a ella.
+    ("120 m² construidos sobre terreno de 360 m²", "construida"),
+    ("Terreno de 360 m² con casa de 120 m² construidos", "terreno"),
+    ("Terreno 360 m² / Construcción 120 m²", "terreno"),
+]
+
+
+@pytest.mark.parametrize(("raw", "kind"), AREA_KINDS)
+def test_parse_area_kind_from_nearby_words(raw, kind):
+    result = parse_area(raw)
+    assert result is not None
+    assert result.kind == kind
+
+
+def test_parse_area_conflicting_cues_at_same_distance_give_no_kind():
+    # "Construcción" antes y "Terreno" después, a la misma distancia: pistas contradictorias.
+    result = parse_area("Construcción 120 m² Terreno 360 m²")
+    assert result is not None
+    assert (result.m2, result.kind) == (D(120), None)
+
+
+AREA_DIMENSIONS = [
+    ("12x30", D(360), "terreno"),
+    ("12 X 30", D(360), "terreno"),
+    ("12×30", D(360), "terreno"),
+    ("12 x 30 m", D(360), "terreno"),
+    ("12,5 x 30 mts", D("375.0"), "terreno"),
+    ("Lote 12x30", D(360), "terreno"),
+    ("Terreno de 12 x 30 mts", D(360), "terreno"),
+    # Una pista explícita de construcción pisa el "terreno" por defecto de las dimensiones.
+    ("10x12 construidos", D(120), "construida"),
+]
+
+
+@pytest.mark.parametrize(("raw", "m2", "kind"), AREA_DIMENSIONS)
+def test_parse_area_dimensions(raw, m2, kind):
+    result = parse_area(raw)
+    assert result is not None
+    assert (result.m2, result.kind) == (m2, kind)
+
+
+def test_parse_area_dimensions_with_conflicting_cues_give_no_kind():
+    result = parse_area("construidos 10x12 terreno")
+    assert result is not None
+    assert (result.m2, result.kind) == (D(120), None)
+
+
+@pytest.mark.parametrize(
+    ("raw", "m2"),
+    [
+        # 100.000 exacto es válido.
+        ("100.000 m²", D(100000)),
+        ("0,5 m²", D("0.5")),
+    ],
+)
+def test_parse_area_accepts_boundary_values(raw, m2):
+    result = parse_area(raw)
+    assert result is not None
+    assert result.m2 == m2
+
+
+# Un descriptivo después de la superficie ("- 3 dormitorios") no es un rango.
+@pytest.mark.parametrize(
+    ("raw", "m2"),
+    [("120 m² - 3 dormitorios", D(120)), ("3 dormitorios - 150 m²", D(150))],
+)
+def test_parse_area_other_numbers_next_to_it_are_not_a_range(raw, m2):
+    result = parse_area(raw)
+    assert result is not None
+    assert result.m2 == m2
+
+
+AREA_NONE_CASES = [
+    "",
+    "   ",
+    "terreno",
+    "consultar",
+    "m²",
+    # Sin unidad cuadrada ni dimensiones.
+    "120",
+    "120 metros",
+    "12 mts de frente",
+    "120 mts",
+    # Valores imposibles.
+    "0 m²",
+    "0,0 m²",
+    "-120 m²",
+    "100.001 m²",
+    "120.000 m²",
+    "1.000.000 m²",
+    "12x0",
+    "0x30",
+    "1000x1000",
+    # Números mal formados.
+    "1.2.3 m²",
+    "9" * 40 + " m²",
+    # Tres dimensiones: no es un lote rectangular (regresión: un lookahead se evadía por backtrack).
+    "10x12x3",
+    "10 x 12 x 3 m",
+    # Rangos de superficie: ParsedArea no tiene flag de "desde".
+    "120 - 150 m²",
+    "120 a 150 m²",
+    "120 m² - 150 m²",
+    "entre 120 y 150 m²",
+    "120 m2 hasta 150 m2",
+]
+
+
+@pytest.mark.parametrize("raw", AREA_NONE_CASES)
+def test_parse_area_returns_none(raw):
+    assert parse_area(raw) is None
+
+
+def test_parsed_area_is_frozen_and_keeps_raw():
+    raw = "  120 m²  "
+    result = parse_area(raw)
+    assert result is not None
+    assert isinstance(result.m2, Decimal)
+    assert result.raw == raw
+    with pytest.raises(FrozenInstanceError):
+        result.m2 = D(1)  # type: ignore[misc]
