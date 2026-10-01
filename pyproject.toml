@@ -1,0 +1,18 @@
+[project]
+name = "avm-gran-asuncion"
+version = "0.1.0"
+description = "Automated Valuation Model del precio de oferta por m² en el Gran Asunción."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Brian Leckie" }, { name = "Oscar Arce" }]
+dependencies = [
+    "pydantic>=2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# El nombre del proyecto (avm-gran-asuncion) no coincide con el paquete (avm): hay que indicarlo.
+[tool.hatch.build.targets.wheel]
+packages = ["src/avm"]

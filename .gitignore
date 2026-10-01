@@ -1,0 +1,48 @@
+# --- Datos y artefactos (solo se versiona el .gitkeep) ---
+# `data/**` + `!data/**/` re-incluye los directorios para que git llegue a los .gitkeep.
+data/**
+!data/**/
+!.gitkeep
+models/*
+!models/.gitkeep
+
+# --- Secretos y entornos ---
+.env
+.venv/
+venv/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+*.joblib
+*.pkl
+
+# --- Caches de herramientas ---
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# --- Frontend ---
+node_modules/
+web/dist/
+
+# --- Claude Code (config local, no se comparte) ---
+.claude/settings.local.json
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*~
