@@ -82,8 +82,10 @@ def test_grouped_kfold_does_not_modify_its_input():
     ],
 )
 def test_grouped_kfold_accepts_any_comparable_labels(ids):
+    labels = np.asarray(ids)
     for train, test in grouped_kfold(ids, n_splits=3, seed=0):
         assert len(test) == 2 and len(train) == 4
+        assert set(labels[train].tolist()).isdisjoint(labels[test].tolist())
 
 
 # (ids, n_splits, seed, patrón del mensaje)
@@ -102,6 +104,13 @@ INVALID_KFOLD = [
     pytest.param([["A"], ["B"]], 2, 0, "cluster_ids.*1-D", id="ids 2-D"),
     pytest.param([1.0, np.nan, 2.0], 2, 0, "cluster_ids.*NaN", id="NaN en ids"),
     pytest.param(np.array(["A", None, "B"], dtype=object), 2, 0, "cluster_ids.*None", id="None"),
+    pytest.param(
+        np.array(["A", np.float32("nan"), "B"], dtype=object),
+        2,
+        0,
+        "cluster_ids.*None o NaN",
+        id="NaN float32",
+    ),
     pytest.param(np.array(["A", 1, "B"], dtype=object), 2, 0, "comparables", id="tipos mezclados"),
 ]
 
@@ -154,6 +163,9 @@ INVALID_GROUPS = [
     pytest.param([["x"], ["y"]], "groups.*1-D", id="2-D"),
     pytest.param([1.0, np.nan], "groups.*NaN", id="NaN"),
     pytest.param(np.array(["x", None], dtype=object), "groups.*None", id="None"),
+    pytest.param(
+        np.array(["x", np.float32("nan")], dtype=object), "groups.*None o NaN", id="NaN float32"
+    ),
     pytest.param(np.array(["x", 1], dtype=object), "comparables", id="tipos mezclados"),
 ]
 
@@ -222,6 +234,40 @@ def test_grouped_kfold_is_deterministic_for_a_given_seed(case):
     )
 
 
+NEIGHBORHOODS = st.sampled_from(["Luque", "San Lorenzo", "Asunción", "Fernando de la Mora", "Ñ"])
+
+
+@st.composite
+def text_kfold_cases(draw):
+    """Ids de cluster de texto (dtype object) con al menos 2 clusters y un n_splits válido."""
+    ids = draw(st.lists(NEIGHBORHOODS, min_size=2, max_size=40))
+    assume(len(set(ids)) >= 2)
+    n_splits = draw(st.integers(min_value=2, max_value=len(set(ids))))
+    return np.array(ids, dtype=object), n_splits
+
+
+@given(case=text_kfold_cases(), seed=st.integers(min_value=0, max_value=2**32 - 1))
+def test_grouped_kfold_and_leave_group_out_never_leak_with_text_labels(case, seed):
+    ids, n_splits = case
+    for train, test in grouped_kfold(ids, n_splits=n_splits, seed=seed):
+        assert set(ids[train].tolist()).isdisjoint(ids[test].tolist())
+    for group, (train, test) in leave_group_out(ids).items():
+        assert group not in set(ids[train].tolist())
+        assert set(ids[test].tolist()) == {group}
+
+
+@given(case=kfold_cases(), data=st.data())
+def test_grouped_kfold_assignment_does_not_depend_on_the_row_order(case, data):
+    ids, n_splits, seed = case
+    permutation = np.array(data.draw(st.permutations(range(len(ids)))))
+
+    def clusters_per_fold(array):
+        splits = grouped_kfold(array, n_splits=n_splits, seed=seed)
+        return [frozenset(array[split.test].tolist()) for split in splits]
+
+    assert clusters_per_fold(ids) == clusters_per_fold(ids[permutation])
+
+
 @given(groups=clustered_rows())
 def test_leave_group_out_holds_each_group_out_exactly_once(groups):
     splits = leave_group_out(groups)
@@ -275,6 +321,17 @@ def test_a_date_equal_to_the_cutoff_belongs_to_test():
     train, test = temporal_holdout(["2026-01-02", "2026-01-03"], "2026-01-03")
     assert train.tolist() == [0]
     assert test.tolist() == [1]
+
+
+def test_the_cutoff_is_compared_as_an_instant_so_a_time_of_day_keeps_that_day_in_train():
+    # Comportamiento documentado: las fechas de un día se toman a las 00:00, así que un corte con
+    # hora posterior a medianoche deja el snapshot de ese día en train. Para que el día del corte
+    # sea test hay que pasar el corte sin hora.
+    dates = ["2026-01-02", "2026-01-03", "2026-01-04"]
+    with_time = temporal_holdout(dates, datetime.datetime(2026, 1, 3, 8, 30))
+    assert (with_time.train.tolist(), with_time.test.tolist()) == ([0, 1], [2])
+    date_only = temporal_holdout(dates, datetime.date(2026, 1, 3))
+    assert (date_only.train.tolist(), date_only.test.tolist()) == ([0], [1, 2])
 
 
 def test_rows_do_not_need_to_be_sorted_by_date():
@@ -349,6 +406,30 @@ INVALID_TEMPORAL = [
     pytest.param(DATES, "no-es-fecha", None, "cutoff.*fecha", id="corte inválido"),
     pytest.param(DATES, 20260103, None, "cutoff.*número", id="corte numérico"),
     pytest.param(DATES, "NaT", None, "cutoff.*NaT", id="corte NaT"),
+    pytest.param(
+        DATES,
+        datetime.datetime(2026, 1, 3, tzinfo=datetime.UTC),
+        None,
+        "cutoff.*zona horaria",
+        id="corte con zona horaria",
+    ),
+    pytest.param(
+        [
+            datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC),
+            datetime.datetime(2026, 1, 5, tzinfo=datetime.UTC),
+        ],
+        CUTOFF,
+        None,
+        "snapshot_dates.*zona horaria",
+        id="fechas con zona horaria",
+    ),
+    pytest.param(
+        DATES,
+        CUTOFF,
+        np.array(["a", np.float32("nan"), "b", "c", "d"], dtype=object),
+        "cluster_ids.*None o NaN",
+        id="NaN float32 en ids",
+    ),
 ]
 
 

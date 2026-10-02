@@ -7,16 +7,30 @@ para un DataFrame, un array o cualquier estructura indexable por posición.
 Regla de cero leakage (principio 4 del ROADMAP): ningún cluster (o grupo) debe aparecer a la vez
 en train y en test. Un mismo inmueble publicado en varios portales forma un cluster (F5.3); si sus
 copias quedaran repartidas entre train y test, el modelo "vería" en entrenamiento el aviso que
-después se evalúa y las métricas saldrían infladas. `grouped_kfold` y `leave_group_out` lo
-garantizan por construcción; `temporal_holdout` solo si se le pasan los `cluster_ids`.
+después se evalúa y las métricas saldrían infladas.
 
-Los splits son reproducibles: no hay azar sin semilla explícita. Los índices de cada array salen
-ordenados de menor a mayor.
+Qué garantiza cada función (y qué no):
+- `grouped_kfold`: ningún cluster en train y test a la vez, por construcción.
+- `leave_group_out`: lo garantiza para los GRUPOS que recibe, no para clusters. Si las copias de un
+  inmueble quedan en grupos distintos (por ejemplo, barrios normalizados distinto, F4.4), una
+  puede quedar en train mientras otra es test.
+- `temporal_holdout`: solo si se le pasan los `cluster_ids`.
+Todas dependen de que el dedup (F5) haya agrupado bien las copias: la garantía es "clusters no
+vistos según el dedup", no "inmuebles nunca vistos".
+
+Los splits son reproducibles: no hay azar sin semilla explícita, y el resultado no depende del
+orden de las filas. Con la misma versión de numpy (la fija uv.lock) y los mismos datos, el reparto
+es idéntico; la asignación cluster → fold de `grouped_kfold` depende del conjunto completo de
+clusters, así que cambia si cambian los datos (conviene guardarla en el manifest del modelo,
+principio 6 del ROADMAP, si se la usa para ajustar hiperparámetros).
+
+Los índices de cada array salen ordenados de menor a mayor y son posiciones en el array que se
+pasó. Si se llama con un subconjunto (por ejemplo `cluster_ids[train]`), hay que mapearlos de
+vuelta a las posiciones del dataset original.
 """
 
 from __future__ import annotations
 
-import math
 from typing import Any, NamedTuple
 
 import numpy as np
@@ -38,7 +52,11 @@ class Split(NamedTuple):
 
 
 def _is_missing(value: object) -> bool:
-    return value is None or (isinstance(value, float) and math.isnan(value))
+    return value is None or (isinstance(value, float | np.floating) and bool(np.isnan(value)))
+
+
+def _has_timezone(value: object) -> bool:
+    return getattr(value, "tzinfo", None) is not None
 
 
 def _as_labels(values: ArrayLike, name: str) -> NDArray[Any]:
@@ -73,6 +91,8 @@ def _as_dates(values: ArrayLike, name: str) -> NDArray[np.datetime64]:
         raise ValueError(f"{name}: no puede estar vacío")
     if array.dtype.kind in "biuf":  # un número se interpretaría en silencio como época
         raise ValueError(f"{name}: debe contener fechas, no números")
+    if array.dtype.kind == "O" and any(_has_timezone(value) for value in array):
+        raise ValueError(f"{name}: no se admiten fechas con zona horaria")  # numpy la descartaría
     try:
         dates = array.astype("datetime64[us]")
     except (TypeError, ValueError) as exc:
@@ -85,6 +105,8 @@ def _as_dates(values: ArrayLike, name: str) -> NDArray[np.datetime64]:
 def _as_cutoff(cutoff: object) -> np.datetime64:
     if isinstance(cutoff, bool | int | float | np.number):
         raise ValueError(f"cutoff: debe ser una fecha, no un número (recibido {cutoff!r})")
+    if _has_timezone(cutoff):
+        raise ValueError("cutoff: no se admiten fechas con zona horaria")  # numpy la descartaría
     try:
         value = np.datetime64(cutoff, "us")
     except (TypeError, ValueError) as exc:
@@ -190,21 +212,39 @@ def temporal_holdout(
 
     Por qué se excluye del test y no del train: el train tiene que reflejar el historial
     completo que el modelo tendría en producción, y el test tiene que medir el desempeño sobre
-    inmuebles nunca vistos. Sacar filas del train le quitaría al modelo historial que sí
+    inmuebles que el modelo no vio. Sacar filas del train le quitaría al modelo historial que sí
     tendría al usarse.
 
-    Costo de esa elección: el test pierde los inmuebles republicados, así que mide el desempeño
-    sobre inmuebles nuevos y no sobre republicaciones. Las filas excluidas quedan fuera de ambos
-    conjuntos; su cantidad es `#(snapshot_dates >= cutoff) − len(test)` y quien llama debe
-    reportarla.
+    Costos y límites de esa elección (no es una exclusión neutral):
+    - El test pierde los inmuebles republicados: mide el desempeño sobre inmuebles nuevos y no
+      sobre republicaciones. Si la persistencia de un aviso está asociada con su precio
+      publicado, el test deja de ser una muestra neutral: conviene comparar las covariables de
+      las filas excluidas y las retenidas (ciudad, tipo, precio publicado) antes de leer las
+      métricas.
+    - Las filas excluidas quedan fuera de ambos conjuntos. Quien llama debe reportar cuántas son
+      y puede obtenerlas con `np.setdiff1d(np.flatnonzero(snapshot_dates >= cutoff), test)`.
+    - Un cluster nuevo que aparece en varios snapshots posteriores al corte conserva todas sus
+      filas en test: los inmuebles más persistentes pesan más en las métricas y esas filas no son
+      independientes (afecta la cobertura de los intervalos, F9.2 y F9.3). Reducir a una fila por
+      cluster, con una regla que dependa solo de la fecha y nunca del precio, queda para F5.3.
+    - La garantía es "clusters no vistos según el dedup". Si F5.2 separa en clusters distintos
+      dos publicaciones del mismo inmueble (por ejemplo, por un cambio de precio mayor que su
+      umbral de similitud), ese inmueble queda a ambos lados del corte sin que esta función lo
+      detecte. Medir ese recall es parte de F5.4.
 
     Sin `cluster_ids` no se excluye nada: train y test particionan todas las filas, y el
     leakage por duplicados a través del tiempo queda a cargo de quien llama.
 
-    Errores (ValueError): fechas vacías, no 1-D, numéricas, no interpretables o con NaT; corte
-    numérico, no interpretable o NaT; `cluster_ids` de otro largo o con None o NaN; train vacío
-    (ninguna fecha anterior al corte) o test vacío (ninguna fecha desde el corte, o todas las
-    candidatas excluidas por clusters ya vistos). Un holdout degenerado no debe pasar en silencio.
+    El corte se compara como instante contra las fechas (un día se toma a las 00:00): un corte
+    con hora posterior a medianoche deja el snapshot de ese día en train. Para que el día del
+    corte sea test, hay que pasar el corte sin hora. No se admiten fechas ni cortes con zona
+    horaria (ValueError): numpy las descartaría en silencio.
+
+    Errores (ValueError): fechas vacías, no 1-D, numéricas, con zona horaria, no interpretables o
+    con NaT; corte numérico, con zona horaria, no interpretable o NaT; `cluster_ids` de otro largo
+    o con None o NaN; train vacío (ninguna fecha anterior al corte) o test vacío (ninguna fecha
+    desde el corte, o todas las candidatas excluidas por clusters ya vistos). Un holdout
+    degenerado no debe pasar en silencio.
     """
     dates = _as_dates(snapshot_dates, "snapshot_dates")
     cut = _as_cutoff(cutoff)
@@ -248,6 +288,11 @@ def leave_group_out(groups: ArrayLike) -> dict[Any, Split]:
 
     Con barrios de pocas observaciones la métrica de cada split es ruidosa (F7.2): conviene
     mirar la distribución entre grupos y no solo el promedio.
+
+    Es leave-GROUP-out, no leave-cluster-out: no recibe `cluster_ids`. Si las copias de un mismo
+    inmueble quedan etiquetadas con barrios distintos (F4.4), están en grupos distintos y una
+    puede quedar en train mientras otra es test. El blocking por barrio de F5.2 hace improbable
+    que un cluster cruce barrios, pero esta función no lo verifica.
 
     Errores (ValueError): grupos vacíos, no 1-D, con None o NaN, no comparables, o menos de 2
     grupos distintos (sin al menos dos no queda train).
