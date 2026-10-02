@@ -1,13 +1,14 @@
-"""Esquemas de split del AVM (F8.2): K-fold por cluster y leave-group-out.
+"""Esquemas de split del AVM (F8.2): K-fold por cluster, holdout temporal y leave-group-out.
 
 Todas las funciones devuelven solo índices (`Split`: arrays de posiciones de fila) y no tocan los
-datos: reciben únicamente los ids de cluster o de grupo. Así sirven igual para un DataFrame, un
-array o cualquier estructura indexable por posición.
+datos: reciben únicamente los ids de cluster, de grupo o las fechas de snapshot. Así sirven igual
+para un DataFrame, un array o cualquier estructura indexable por posición.
 
-Regla de cero leakage (principio 4 del ROADMAP): ningún cluster (o grupo) aparece a la vez en
-train y en test. Un mismo inmueble publicado en varios portales forma un cluster (F5.3); si sus
+Regla de cero leakage (principio 4 del ROADMAP): ningún cluster (o grupo) debe aparecer a la vez
+en train y en test. Un mismo inmueble publicado en varios portales forma un cluster (F5.3); si sus
 copias quedaran repartidas entre train y test, el modelo "vería" en entrenamiento el aviso que
-después se evalúa y las métricas saldrían infladas.
+después se evalúa y las métricas saldrían infladas. `grouped_kfold` y `leave_group_out` lo
+garantizan por construcción; `temporal_holdout` solo si se le pasan los `cluster_ids`.
 
 Los splits son reproducibles: no hay azar sin semilla explícita. Los índices de cada array salen
 ordenados de menor a mayor.
@@ -61,6 +62,36 @@ def _factorize(labels: NDArray[Any], name: str) -> tuple[NDArray[Any], IndexArra
     except TypeError as exc:
         raise ValueError(f"{name}: los valores no son comparables entre sí ({exc})") from exc
     return uniques, codes.reshape(-1).astype(np.intp)
+
+
+def _as_dates(values: ArrayLike, name: str) -> NDArray[np.datetime64]:
+    """Array 1-D de fechas (datetime64), no vacío y sin NaT."""
+    array = np.asarray(values)
+    if array.ndim != 1:
+        raise ValueError(f"{name}: debe ser 1-D, tiene {array.ndim} dimensiones")
+    if array.size == 0:
+        raise ValueError(f"{name}: no puede estar vacío")
+    if array.dtype.kind in "biuf":  # un número se interpretaría en silencio como época
+        raise ValueError(f"{name}: debe contener fechas, no números")
+    try:
+        dates = array.astype("datetime64[us]")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name}: no se puede interpretar como fechas ({exc})") from exc
+    if np.isnat(dates).any():
+        raise ValueError(f"{name}: contiene fechas faltantes (NaT)")
+    return dates
+
+
+def _as_cutoff(cutoff: object) -> np.datetime64:
+    if isinstance(cutoff, bool | int | float | np.number):
+        raise ValueError(f"cutoff: debe ser una fecha, no un número (recibido {cutoff!r})")
+    try:
+        value = np.datetime64(cutoff, "us")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"cutoff: no se puede interpretar como fecha ({exc})") from exc
+    if np.isnat(value):
+        raise ValueError("cutoff: es una fecha faltante (NaT)")
+    return value
 
 
 def _validate_n_splits(n_splits: int, n_clusters: int) -> None:
@@ -129,6 +160,78 @@ def grouped_kfold(cluster_ids: ArrayLike, n_splits: int, seed: int) -> list[Spli
         in_test = fold_of_row == fold
         splits.append(Split(np.flatnonzero(~in_test), np.flatnonzero(in_test)))
     return splits
+
+
+# --------------------------------------------------------------------------------------------
+# Holdout temporal
+# --------------------------------------------------------------------------------------------
+
+
+def temporal_holdout(
+    snapshot_dates: ArrayLike,
+    cutoff: object,
+    *,
+    cluster_ids: ArrayLike | None = None,
+) -> Split:
+    """Holdout temporal: entrena con el pasado y evalúa desde el corte (esquema (b) de F8.2).
+
+    - train = filas con `snapshot_dates < cutoff`, estrictamente anteriores al corte.
+    - test  = filas con `snapshot_dates >= cutoff`; el snapshot del corte es parte del test.
+
+    `snapshot_dates` acepta `datetime64`, `datetime.date`, `datetime.datetime` o strings ISO, y
+    `cutoff` cualquiera de esos tipos. Las filas no tienen que venir ordenadas. Toda fecha de
+    train es anterior a toda fecha de test.
+
+    Exclusión de clusters ya vistos (`cluster_ids`, opcional). Un mismo inmueble publicado en un
+    snapshot viejo y otra vez en uno nuevo queda a ambos lados del corte: es leakage por
+    duplicados a lo largo del tiempo (cero leakage, F5.3). Con `cluster_ids`, se EXCLUYEN DEL
+    TEST las filas cuyo cluster aparece en el train; el train no se toca. Tras la exclusión,
+    ningún cluster está a la vez en train y en test.
+
+    Por qué se excluye del test y no del train: el train tiene que reflejar el historial
+    completo que el modelo tendría en producción, y el test tiene que medir el desempeño sobre
+    inmuebles nunca vistos. Sacar filas del train le quitaría al modelo historial que sí
+    tendría al usarse.
+
+    Costo de esa elección: el test pierde los inmuebles republicados, así que mide el desempeño
+    sobre inmuebles nuevos y no sobre republicaciones. Las filas excluidas quedan fuera de ambos
+    conjuntos; su cantidad es `#(snapshot_dates >= cutoff) − len(test)` y quien llama debe
+    reportarla.
+
+    Sin `cluster_ids` no se excluye nada: train y test particionan todas las filas, y el
+    leakage por duplicados a través del tiempo queda a cargo de quien llama.
+
+    Errores (ValueError): fechas vacías, no 1-D, numéricas, no interpretables o con NaT; corte
+    numérico, no interpretable o NaT; `cluster_ids` de otro largo o con None o NaN; train vacío
+    (ninguna fecha anterior al corte) o test vacío (ninguna fecha desde el corte, o todas las
+    candidatas excluidas por clusters ya vistos). Un holdout degenerado no debe pasar en silencio.
+    """
+    dates = _as_dates(snapshot_dates, "snapshot_dates")
+    cut = _as_cutoff(cutoff)
+    is_train = dates < cut
+    is_test = ~is_train
+
+    if cluster_ids is not None:
+        clusters = _as_labels(cluster_ids, "cluster_ids")
+        if clusters.shape != dates.shape:
+            raise ValueError(
+                "cluster_ids debe tener el mismo largo que snapshot_dates "
+                f"(recibidos {clusters.size} y {dates.size})"
+            )
+        is_test &= ~np.isin(clusters, clusters[is_train])
+
+    train = np.flatnonzero(is_train)
+    test = np.flatnonzero(is_test)
+    if train.size == 0:
+        raise ValueError("train vacío: ninguna fecha es anterior al corte")
+    if test.size == 0:
+        reason = (
+            "todas las filas desde el corte tienen clusters ya vistos en train"
+            if cluster_ids is not None and (~is_train).any()
+            else "ninguna fecha es igual o posterior al corte"
+        )
+        raise ValueError(f"test vacío: {reason}")
+    return Split(train, test)
 
 
 # --------------------------------------------------------------------------------------------

@@ -5,13 +5,14 @@ cero leakage: ningún cluster (o grupo) aparece a la vez en train y en test.
 """
 
 import collections
+import datetime
 
 import numpy as np
 import pytest
 from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
-from avm.model.splits import Split, grouped_kfold, leave_group_out
+from avm.model.splits import Split, grouped_kfold, leave_group_out, temporal_holdout
 
 # --------------------------------------------------------------------------------------------
 # grouped_kfold
@@ -233,3 +234,192 @@ def test_leave_group_out_holds_each_group_out_exactly_once(groups):
         assert np.array_equal(np.sort(np.concatenate([train, test])), everything)
         seen_in_test.extend(test.tolist())
     assert sorted(seen_in_test) == everything.tolist()
+
+
+# --------------------------------------------------------------------------------------------
+# temporal_holdout
+#
+# Ejemplo calculado a mano (filas 0..4, un snapshot por día), corte = 2026-01-03:
+#   fechas  = [01-01, 01-02, 01-03, 01-04, 01-05]
+#   train   = fechas estrictamente anteriores al corte = filas {0, 1}
+#   test    = fechas >= corte (el snapshot del corte es test) = filas {2, 3, 4}
+#
+# Con cluster_ids = [a, b, a, c, d]:
+#   clusters en train = {a (fila 0), b (fila 1)}
+#   candidatas a test = {2 (a), 3 (c), 4 (d)}; la fila 2 es del cluster a, que ya está en train
+#   → se EXCLUYE DEL TEST la fila 2. El train no se toca.
+#   train = {0, 1} (igual que sin cluster_ids),  test = {3, 4},  excluidas = 3 − 2 = 1 (fila 2)
+# --------------------------------------------------------------------------------------------
+DATES = ["2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05"]
+CUTOFF = "2026-01-03"
+CLUSTERS = ["a", "b", "a", "c", "d"]
+
+
+def test_temporal_holdout_hand_computed_without_cluster_ids():
+    train, test = temporal_holdout(DATES, CUTOFF)
+    assert train.tolist() == [0, 1]
+    assert test.tolist() == [2, 3, 4]
+
+
+def test_temporal_holdout_hand_computed_excludes_seen_clusters_from_test_only():
+    split = temporal_holdout(DATES, CUTOFF, cluster_ids=CLUSTERS)
+    assert isinstance(split, Split)
+    assert split.train.tolist() == [0, 1]  # el train no pierde nada
+    assert split.test.tolist() == [3, 4]  # la fila 2 (cluster "a", ya visto) sale del test
+    excluded = {2, 3, 4} - set(split.test.tolist())
+    assert excluded == {2}
+    assert excluded.isdisjoint(split.train.tolist())  # queda fuera de ambos conjuntos
+
+
+def test_a_date_equal_to_the_cutoff_belongs_to_test():
+    train, test = temporal_holdout(["2026-01-02", "2026-01-03"], "2026-01-03")
+    assert train.tolist() == [0]
+    assert test.tolist() == [1]
+
+
+def test_rows_do_not_need_to_be_sorted_by_date():
+    # fechas = [03, 01, 05, 02], corte 03 → train: filas 1 (01) y 3 (02); test: 0 (03) y 2 (05)
+    dates = ["2026-01-03", "2026-01-01", "2026-01-05", "2026-01-02"]
+    train, test = temporal_holdout(dates, "2026-01-03")
+    assert train.tolist() == [1, 3]
+    assert test.tolist() == [0, 2]
+
+
+def test_a_cluster_seen_only_in_the_future_is_not_excluded():
+    # El cluster "c" aparece dos veces, ambas en el test: no hay historial que lo haya "visto".
+    dates = ["2026-01-01", "2026-01-04", "2026-01-05"]
+    split = temporal_holdout(dates, "2026-01-03", cluster_ids=["a", "c", "c"])
+    assert split.train.tolist() == [0]
+    assert split.test.tolist() == [1, 2]
+
+
+def test_temporal_holdout_accepts_dates_in_several_formats():
+    expected = ([0, 1], [2, 3, 4])
+    as_datetime64 = np.array(DATES, dtype="datetime64[D]")
+    as_python_dates = [datetime.date.fromisoformat(value) for value in DATES]
+    as_datetimes = [datetime.datetime.fromisoformat(value + "T08:30:00") for value in DATES]
+    for dates in (DATES, as_datetime64, as_python_dates, as_datetimes, np.array(DATES)):
+        for cutoff in (
+            CUTOFF,
+            datetime.date(2026, 1, 3),
+            datetime.datetime(2026, 1, 3, 0, 0),
+            np.datetime64("2026-01-03"),
+            np.datetime64("2026-01-03T00:00:00"),
+        ):
+            train, test = temporal_holdout(dates, cutoff)
+            assert (train.tolist(), test.tolist()) == expected
+
+
+def test_temporal_holdout_does_not_modify_its_input():
+    dates = np.array(DATES, dtype="datetime64[D]")
+    clusters = np.array(CLUSTERS)
+    dates_before, clusters_before = dates.copy(), clusters.copy()
+    temporal_holdout(dates, CUTOFF, cluster_ids=clusters)
+    assert np.array_equal(dates, dates_before)
+    assert np.array_equal(clusters, clusters_before)
+
+
+def test_without_cluster_ids_train_and_test_partition_all_rows():
+    train, test = temporal_holdout(DATES, CUTOFF)
+    assert sorted(train.tolist() + test.tolist()) == list(range(len(DATES)))
+
+
+# (fechas, corte, cluster_ids, patrón del mensaje)
+INVALID_TEMPORAL = [
+    pytest.param(DATES, "2026-01-01", None, "train vacío", id="ninguna fecha anterior al corte"),
+    pytest.param(DATES, "2026-01-06", None, "test vacío", id="ninguna fecha desde el corte"),
+    pytest.param(
+        ["2026-01-01", "2026-01-02", "2026-01-03"],
+        "2026-01-03",
+        ["a", "b", "a"],
+        "test vacío.*clusters",
+        id="todo el test ya fue visto en train",
+    ),
+    pytest.param(DATES, CUTOFF, ["a", "b"], "cluster_ids.*mismo largo", id="ids de otro largo"),
+    pytest.param(DATES, CUTOFF, ["a", None, "b", "c", "d"], "cluster_ids.*None", id="None en ids"),
+    pytest.param(
+        DATES, CUTOFF, np.array([1.0, np.nan, 2, 3, 4]), "cluster_ids.*NaN", id="NaN en ids"
+    ),
+    pytest.param([], CUTOFF, None, "snapshot_dates.*vacío", id="sin fechas"),
+    pytest.param([DATES], CUTOFF, None, "snapshot_dates.*1-D", id="fechas 2-D"),
+    pytest.param(["2026-01-01", "NaT", "2026-01-05"], CUTOFF, None, "NaT", id="NaT en fechas"),
+    pytest.param([1, 2, 3], CUTOFF, None, "fechas, no números", id="fechas numéricas"),
+    pytest.param([1.5, 2.5], CUTOFF, None, "fechas, no números", id="fechas float"),
+    pytest.param(["hoy", "ayer"], CUTOFF, None, "snapshot_dates.*fechas", id="texto no fecha"),
+    pytest.param(DATES, "no-es-fecha", None, "cutoff.*fecha", id="corte inválido"),
+    pytest.param(DATES, 20260103, None, "cutoff.*número", id="corte numérico"),
+    pytest.param(DATES, "NaT", None, "cutoff.*NaT", id="corte NaT"),
+]
+
+
+@pytest.mark.parametrize(("dates", "cutoff", "clusters", "message"), INVALID_TEMPORAL)
+def test_temporal_holdout_rejects_invalid_arguments(dates, cutoff, clusters, message):
+    with pytest.raises(ValueError, match=message):
+        temporal_holdout(dates, cutoff, cluster_ids=clusters)
+
+
+# --------------------------------------------------------------------------------------------
+# Property tests (hypothesis): el temporal respeta el tiempo y, con cluster_ids, no hay leakage
+# --------------------------------------------------------------------------------------------
+
+JANUARY = st.dates(min_value=datetime.date(2026, 1, 1), max_value=datetime.date(2026, 1, 31))
+
+
+@st.composite
+def dated_rows(draw):
+    """Filas con fecha de snapshot y cluster, más un corte (todo dentro de enero de 2026)."""
+    rows = draw(
+        st.lists(st.tuples(JANUARY, st.integers(min_value=0, max_value=5)), min_size=1, max_size=40)
+    )
+    dates = np.array([row[0] for row in rows], dtype="datetime64[D]")
+    clusters = np.array([row[1] for row in rows])
+    cutoff = draw(JANUARY)
+    return dates, clusters, np.datetime64(cutoff, "D")
+
+
+@settings(max_examples=300)
+@given(case=dated_rows())
+def test_temporal_holdout_train_is_strictly_before_test(case):
+    dates, _, cutoff = case
+    before = np.flatnonzero(dates < cutoff)
+    from_cutoff = np.flatnonzero(dates >= cutoff)
+    if before.size == 0 or from_cutoff.size == 0:
+        with pytest.raises(ValueError, match="vacío"):
+            temporal_holdout(dates, cutoff)
+        return
+    train, test = temporal_holdout(dates, cutoff)
+    assert np.array_equal(train, before)
+    assert np.array_equal(test, from_cutoff)
+    assert dates[train].max() < dates[test].min()  # toda fecha de train es anterior a toda de test
+    assert np.array_equal(np.sort(np.concatenate([train, test])), np.arange(len(dates)))
+
+
+@settings(max_examples=300)
+@given(case=dated_rows())
+def test_with_cluster_ids_no_cluster_is_in_both_sides_and_train_loses_nothing(case):
+    dates, clusters, cutoff = case
+    before = np.flatnonzero(dates < cutoff)
+    seen_clusters = set(clusters[before].tolist())
+    expected_test = [
+        i for i in np.flatnonzero(dates >= cutoff).tolist() if clusters[i] not in seen_clusters
+    ]
+    if before.size == 0 or not expected_test:
+        with pytest.raises(ValueError, match="vacío"):
+            temporal_holdout(dates, cutoff, cluster_ids=clusters)
+        return
+
+    split = temporal_holdout(dates, cutoff, cluster_ids=clusters)
+
+    # 1. La intersección de clusters entre train y test es vacía.
+    assert set(clusters[split.train].tolist()).isdisjoint(clusters[split.test].tolist())
+    # 2. El train no pierde registros: son exactamente las filas con fecha anterior al corte.
+    assert np.array_equal(split.train, before)
+    assert len(split.train) == int((dates < cutoff).sum())
+    # 3. El test son las filas desde el corte cuyo cluster no está en train, y nada más.
+    assert split.test.tolist() == expected_test
+    # 4. El tiempo se respeta igual que sin cluster_ids.
+    assert dates[split.train].max() < dates[split.test].min()
+    # 5. Lo excluido sale solo del test y queda fuera de ambos conjuntos.
+    excluded = set(np.flatnonzero(dates >= cutoff).tolist()) - set(split.test.tolist())
+    assert all(clusters[i] in seen_clusters for i in excluded)
+    assert excluded.isdisjoint(split.train.tolist())
