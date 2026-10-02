@@ -19,6 +19,7 @@ dev = [
     "mypy",
     "pre-commit",
     "hypothesis",
+    "coverage",
 ]
 
 [build-system]
