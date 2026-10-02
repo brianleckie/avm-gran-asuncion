@@ -24,6 +24,11 @@ from numpy.typing import ArrayLike, NDArray
 
 FloatArray = NDArray[np.float64]
 
+# Margen relativo para que un error que en teoría vale exactamente `tol` no quede afuera por el
+# redondeo de punto flotante: |0,77 − 0,7| / 0,7 da 0,10000000000000009 y no 0,1. Es mucho menor
+# que cualquier diferencia real entre precios, así que no admite errores realmente mayores.
+_PE_ROUNDING_SLACK = 1e-12
+
 
 # --------------------------------------------------------------------------------------------
 # Validación de entradas
@@ -113,7 +118,7 @@ def mdape(y_true: ArrayLike, y_pred: ArrayLike) -> float:
     Definición: MdAPE = mediana de { |ŷᵢ − yᵢ| / yᵢ }.
 
     Por qué se usa en AVMs: resume el error típico sin que lo arrastren unos pocos avisos mal
-    publicados o con errores de tipeo, frecuentes en datos de portales (F4.6). La mitad de las
+    publicados o con errores de tipeo, como los que F4.6 prevé detectar. La mitad de las
     estimaciones tiene un error relativo menor o igual que este valor.
     """
     true, pred = _validate_prices(y_true, y_pred)
@@ -125,9 +130,14 @@ def mdape(y_true: ArrayLike, y_pred: ArrayLike) -> float:
 def pe_within(y_true: ArrayLike, y_pred: ArrayLike, tol: float) -> float:
     """Fracción de predicciones dentro de ±tol del precio publicado (PE, "percent error").
 
-    Definición: PE(tol) = (1/n) · #{ i : |ŷᵢ − yᵢ| / yᵢ ≤ tol }. El borde es inclusivo, `tol` es
-    una fracción (PE10: `tol=0.10`; PE20: `tol=0.20`) y debe ser finita y >= 0. El resultado está
-    en [0, 1] y no decrece cuando `tol` aumenta.
+    Definición: PE(tol) = (1/n) · #{ i : |ŷᵢ − yᵢ| / yᵢ ≤ tol }. `tol` es una fracción (PE10:
+    `tol=0.10`; PE20: `tol=0.20`) y debe ser finita y >= 0. El resultado está en [0, 1] y no
+    decrece cuando `tol` aumenta.
+
+    El borde es inclusivo también en punto flotante: la comparación admite un margen relativo de
+    1e-12 sobre `tol`, para que un error que en teoría vale exactamente `tol` no quede afuera por
+    redondeo (con floats, |0,77 − 0,7| / 0,7 da 0,10000000000000009 y no 0,1). El margen es
+    órdenes de magnitud menor que cualquier diferencia real entre precios.
 
     Por qué se usa en AVMs: responde la pregunta que entiende el usuario final ("¿qué fracción
     de las estimaciones cae dentro de ±10 % o ±20 % del precio publicado?"), y no la distorsionan
@@ -137,7 +147,8 @@ def pe_within(y_true: ArrayLike, y_pred: ArrayLike, tol: float) -> float:
     """
     true, pred = _validate_prices(y_true, y_pred)
     tolerance = _validate_tolerance(tol)
-    return float(np.mean(_relative_errors(true, pred) <= tolerance))
+    limit = tolerance * (1.0 + _PE_ROUNDING_SLACK)
+    return float(np.mean(_relative_errors(true, pred) <= limit))
 
 
 def rmse_log(y_true: ArrayLike, y_pred: ArrayLike) -> float:
@@ -146,10 +157,10 @@ def rmse_log(y_true: ArrayLike, y_pred: ArrayLike) -> float:
     Definición: RMSE_log = √( (1/n) · Σ (ln ŷᵢ − ln yᵢ)² ). Recibe precios en unidades naturales
     y aplica el logaritmo adentro.
 
-    Por qué se usa en AVMs: el target del modelo es log(USD/m²) (F8.1), así que esta es la
-    métrica en la que el modelo realmente se optimiza. En escala log el error es relativo y
-    simétrico: subestimar y sobreestimar por el mismo factor pesa igual. Para errores chicos, su
-    valor es aproximadamente el error relativo típico (0,10 ≈ 10 %).
+    Por qué se usa en AVMs: el target del modelo es log(USD/m²) (F8.1); si se entrena con pérdida
+    cuadrática sobre ese target, esta es la métrica que el modelo minimiza. En escala log el error
+    es relativo y simétrico: subestimar y sobreestimar por el mismo factor pesa igual. Para
+    errores chicos, su valor es aproximadamente el error relativo típico (0,10 ≈ 10 %).
     """
     true, pred = _validate_prices(y_true, y_pred)
     with np.errstate(all="ignore"):

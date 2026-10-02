@@ -57,6 +57,20 @@ def test_pe_within_hand_computed(tol, expected):
     assert pe_within(Y_TRUE, Y_PRED, tol) == pytest.approx(expected, abs=1e-12)
 
 
+# El borde es inclusivo también en punto flotante. |0,77 − 0,7| / 0,7 vale exactamente 0,1 en teoría
+# (0,07 / 0,7), pero con floats da 0,10000000000000009 y sin margen quedaría afuera con tol=0,1.
+def test_pe_within_boundary_is_inclusive_despite_floating_point_rounding():
+    assert abs(0.77 - 0.7) / 0.7 > 0.1  # el cálculo ingenuo se pasa del borde por redondeo
+    assert pe_within([0.7], [0.77], 0.1) == 1.0
+
+
+# El margen es solo para el redondeo: un error realmente mayor sigue quedando afuera.
+# y = 100: ŷ = 110,00001 → error relativo 0,1000001 > 0,1;  ŷ = 110,1 → 0,101 > 0,1.
+@pytest.mark.parametrize("y_pred", [110.00001, 110.1])
+def test_pe_within_rounding_margin_does_not_admit_a_really_larger_error(y_pred):
+    assert pe_within([100], [y_pred], 0.1) == 0.0
+
+
 def test_rmse_log_hand_computed():
     assert rmse_log(Y_TRUE, Y_PRED) == pytest.approx(0.23201023367, abs=1e-10)
 
