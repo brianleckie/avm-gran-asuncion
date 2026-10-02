@@ -155,3 +155,87 @@ def rmse_log(y_true: ArrayLike, y_pred: ArrayLike) -> float:
     with np.errstate(all="ignore"):
         result = float(np.sqrt(np.mean((np.log(pred) - np.log(true)) ** 2)))
     return _finite(result, "rmse_log")
+
+
+# --------------------------------------------------------------------------------------------
+# Métricas de intervalos de predicción
+# --------------------------------------------------------------------------------------------
+
+
+def _validate_interval(low: ArrayLike, high: ArrayLike) -> tuple[FloatArray, FloatArray]:
+    """Límites finitos, del mismo largo y con low <= high. No exige que sean positivos."""
+    lower = _as_1d_float(low, "low")
+    upper = _as_1d_float(high, "high")
+    if lower.shape != upper.shape:
+        raise ValueError(
+            f"low y high deben tener el mismo largo (recibidos {lower.size} y {upper.size})"
+        )
+    if not np.all(lower <= upper):
+        raise ValueError("low debe ser <= high en todos los elementos")
+    return lower, upper
+
+
+def interval_coverage(y: ArrayLike, low: ArrayLike, high: ArrayLike) -> float:
+    """Cobertura empírica de los intervalos de predicción (fracción en [0, 1]).
+
+    Definición: cobertura = (1/n) · Σ 1[ lowᵢ ≤ yᵢ ≤ highᵢ ]. El intervalo es cerrado: `y` igual a
+    `low` o a `high` cuenta como cubierto. `y` es el precio publicado (> 0); `low` y `high` deben
+    ser finitos con `low <= high`, pero no hace falta que sean positivos.
+
+    Por qué se usa en AVMs: un intervalo con nivel nominal de, por ejemplo, 80 % tiene que cubrir
+    cerca del 80 % de los precios publicados en datos no vistos; si cubre menos, el rango de
+    error que se le muestra al usuario es engañoso. Esta función solo mide la cobertura real:
+    compararla con el nivel nominal es tarea de quien la llama (F9.3).
+    """
+    target = _as_1d_float(y, "y")
+    lower = _as_1d_float(low, "low")
+    upper = _as_1d_float(high, "high")
+    if not target.shape == lower.shape == upper.shape:
+        raise ValueError(
+            "y, low y high deben tener el mismo largo "
+            f"(recibidos {target.size}, {lower.size} y {upper.size})"
+        )
+    _require_positive(target, "y")
+    lower, upper = _validate_interval(lower, upper)
+    return float(np.mean((lower <= target) & (target <= upper)))
+
+
+def mean_interval_width(
+    low: ArrayLike,
+    high: ArrayLike,
+    y_pred: ArrayLike | None = None,
+    *,
+    relative: bool = False,
+) -> float:
+    """Ancho medio de los intervalos de predicción, absoluto o relativo a la predicción.
+
+    Definiciones:
+    - absoluto (`relative=False`): (1/n) · Σ (highᵢ − lowᵢ), en las unidades de los precios.
+    - relativo (`relative=True`): (1/n) · Σ (highᵢ − lowᵢ) / ŷᵢ, donde ŷ es la predicción puntual
+      (`y_pred`, que en ese caso es obligatoria y debe ser > 0). Es una fracción de la predicción.
+
+    Pasar `y_pred` con `relative=False` es un error: no se ignora en silencio.
+
+    Por qué se usa en AVMs: la cobertura sola se puede lograr con intervalos absurdamente anchos,
+    así que hay que mirarla junto con el ancho. El ancho relativo permite comparar propiedades de
+    precios distintos y verificar que los intervalos sean más anchos donde hay menos datos
+    (F9.4).
+    """
+    lower, upper = _validate_interval(low, high)
+    if not relative:
+        if y_pred is not None:
+            raise ValueError("y_pred solo se usa con relative=True")
+        with np.errstate(all="ignore"):
+            result = float(np.mean(upper - lower))
+        return _finite(result, "mean_interval_width")
+    if y_pred is None:
+        raise ValueError("relative=True requiere y_pred")
+    pred = _as_1d_float(y_pred, "y_pred")
+    if pred.shape != lower.shape:
+        raise ValueError(
+            f"y_pred debe tener el mismo largo que low y high (recibidos {pred.size}, {lower.size})"
+        )
+    _require_positive(pred, "y_pred")
+    with np.errstate(all="ignore"):
+        result = float(np.mean((upper - lower) / pred))
+    return _finite(result, "mean_interval_width")

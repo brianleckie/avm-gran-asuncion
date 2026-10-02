@@ -11,7 +11,14 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from avm.model.metrics import mape, mdape, pe_within, rmse_log
+from avm.model.metrics import (
+    interval_coverage,
+    mape,
+    mdape,
+    mean_interval_width,
+    pe_within,
+    rmse_log,
+)
 
 # --------------------------------------------------------------------------------------------
 # Ejemplo principal, calculado a mano
@@ -183,3 +190,149 @@ def test_a_perfect_prediction_is_error_free(values):
     assert mdape(values, values) == 0.0
     assert rmse_log(values, values) == 0.0
     assert pe_within(values, values, 0.0) == 1.0
+
+
+# --------------------------------------------------------------------------------------------
+# Intervalos de predicción: cobertura y ancho
+#
+# Ejemplo calculado a mano:
+#   y    = [10, 20, 30, 40]
+#   low  = [ 8, 22, 25, 35]
+#   high = [12, 30, 35, 38]
+#
+#   10 ∈ [8, 12] sí;  20 ∈ [22, 30] no (queda debajo de low);  30 ∈ [25, 35] sí;
+#   40 ∈ [35, 38] no (queda arriba de high)  →  cobertura = 2/4 = 0,5
+#
+#   Anchos high − low = [4, 8, 10, 3]  →  ancho medio absoluto = 25 / 4 = 6,25
+#   Relativos a ŷ = y: [4/10, 8/20, 10/30, 3/40] = [0,4; 0,4; 0,3333…; 0,075]
+#                  →  ancho medio relativo = 1,2083333… / 4 = 0,30208333…
+# --------------------------------------------------------------------------------------------
+Y = [10, 20, 30, 40]
+LOW = [8, 22, 25, 35]
+HIGH = [12, 30, 35, 38]
+
+
+def test_interval_coverage_hand_computed():
+    assert interval_coverage(Y, LOW, HIGH) == pytest.approx(0.5, abs=1e-12)
+
+
+def test_mean_interval_width_absolute_hand_computed():
+    assert mean_interval_width(LOW, HIGH) == pytest.approx(6.25, abs=1e-12)
+
+
+def test_mean_interval_width_relative_hand_computed():
+    result = mean_interval_width(LOW, HIGH, Y, relative=True)
+    assert result == pytest.approx(0.30208333333, abs=1e-10)
+
+
+def test_interval_bounds_are_inclusive_and_zero_width_is_allowed():
+    # y igual a low o a high cuenta como cubierto; un intervalo de ancho 0 sobre y también.
+    assert interval_coverage([10, 20], [10, 15], [12, 20]) == 1.0
+    assert interval_coverage([10], [10], [10]) == 1.0
+    assert mean_interval_width([10], [10]) == 0.0
+
+
+def test_interval_bounds_do_not_need_to_be_positive():
+    # Solo y (un precio) debe ser > 0: un límite inferior <= 0 es un problema del modelo que no
+    # se esconde rechazando la entrada. y = [5, 5]: 5 ∈ [−3, 6] sí; 5 ∈ [−10, 4] no → 0,5.
+    assert interval_coverage([5, 5], [-3, -10], [6, 4]) == pytest.approx(0.5, abs=1e-12)
+    # Anchos: 6 − (−3) = 9 y 4 − (−10) = 14 → (9 + 14) / 2 = 11,5.
+    assert mean_interval_width([-3, -10], [6, 4]) == pytest.approx(11.5, abs=1e-12)
+
+
+# (y, low, high, patrón del mensaje)
+INVALID_COVERAGE = [
+    pytest.param([1, 2, 3], [1, 2], [2, 3], "mismo largo", id="y y low de distinto largo"),
+    pytest.param([1, 2], [1, 2], [2, 3, 4], "mismo largo", id="low y high de distinto largo"),
+    pytest.param([], [], [], "vacío", id="vacío"),
+    pytest.param([[1], [2]], [[1], [2]], [[2], [3]], "1-D", id="2-D"),
+    pytest.param([1, np.nan], [1, 2], [2, 3], "y.*NaN", id="NaN en y"),
+    pytest.param([1, 2], [1, np.nan], [2, 3], "low.*NaN", id="NaN en low"),
+    pytest.param([1, 2], [1, 2], [2, np.inf], "high.*infinitos", id="inf en high"),
+    pytest.param([0, 2], [1, 2], [2, 3], "y.*> 0", id="y cero"),
+    pytest.param([-1, 2], [1, 2], [2, 3], "y.*> 0", id="y negativo"),
+    pytest.param([1, 2], [3, 2], [2, 3], "low.*<= high", id="low mayor que high"),
+]
+
+
+@pytest.mark.parametrize(("y", "low", "high", "message"), INVALID_COVERAGE)
+def test_interval_coverage_rejects_invalid_inputs(y, low, high, message):
+    with pytest.raises(ValueError, match=message):
+        interval_coverage(y, low, high)
+
+
+@pytest.mark.parametrize(
+    ("low", "high", "message"),
+    [
+        pytest.param([1, 2], [2, 3, 4], "mismo largo", id="largos distintos"),
+        pytest.param([], [], "vacío", id="vacío"),
+        pytest.param([np.nan, 2], [2, 3], "low.*NaN", id="NaN"),
+        pytest.param([3, 2], [2, 3], "low.*<= high", id="low mayor que high"),
+    ],
+)
+def test_mean_interval_width_rejects_invalid_intervals(low, high, message):
+    with pytest.raises(ValueError, match=message):
+        mean_interval_width(low, high)
+
+
+def test_relative_width_requires_a_valid_prediction():
+    with pytest.raises(ValueError, match="relative=True requiere y_pred"):
+        mean_interval_width(LOW, HIGH, relative=True)
+    with pytest.raises(ValueError, match="y_pred.*mismo largo"):
+        mean_interval_width(LOW, HIGH, [10, 20, 30], relative=True)
+    with pytest.raises(ValueError, match="y_pred.*> 0"):
+        mean_interval_width(LOW, HIGH, [10, 20, 0, 40], relative=True)
+    with pytest.raises(ValueError, match="y_pred.*NaN"):
+        mean_interval_width(LOW, HIGH, [10, 20, np.nan, 40], relative=True)
+
+
+def test_y_pred_without_relative_is_an_error_not_silently_ignored():
+    with pytest.raises(ValueError, match="y_pred solo se usa con relative=True"):
+        mean_interval_width(LOW, HIGH, Y)
+
+
+@pytest.mark.parametrize("relative", [False, True])
+def test_overflowing_width_is_an_error_not_an_inf(relative):
+    # high − low = 2e308 desborda a inf.
+    kwargs = {"y_pred": [1.0], "relative": True} if relative else {}
+    with pytest.raises(ValueError, match="no finito"):
+        mean_interval_width([-1e308], [1e308], **kwargs)
+
+
+# --------------------------------------------------------------------------------------------
+# Property tests (hypothesis): intervalos
+# --------------------------------------------------------------------------------------------
+
+
+@st.composite
+def interval_cases(draw):
+    """y positivos con intervalos válidos (low <= high), del mismo largo."""
+    n = draw(st.integers(min_value=1, max_value=30))
+    y = draw(st.lists(PRICES, min_size=n, max_size=n))
+    ends = draw(st.lists(st.tuples(PRICES, PRICES), min_size=n, max_size=n))
+    low = [min(a, b) for a, b in ends]
+    high = [max(a, b) for a, b in ends]
+    return y, low, high
+
+
+@given(case=interval_cases())
+def test_coverage_is_a_fraction_and_widths_are_never_negative(case):
+    y, low, high = case
+    assert 0.0 <= interval_coverage(y, low, high) <= 1.0
+    assert mean_interval_width(low, high) >= 0.0
+    assert mean_interval_width(low, high, y, relative=True) >= 0.0
+
+
+@given(case=interval_cases(), margin=st.floats(min_value=0.0, max_value=1e6))
+def test_widening_every_interval_never_lowers_coverage(case, margin):
+    y, low, high = case
+    wider_low = [value - margin for value in low]
+    wider_high = [value + margin for value in high]
+    assert interval_coverage(y, wider_low, wider_high) >= interval_coverage(y, low, high)
+
+
+@given(values=st.lists(PRICES, min_size=1, max_size=30))
+def test_zero_width_intervals_on_y_cover_everything_with_zero_width(values):
+    assert interval_coverage(values, values, values) == 1.0
+    assert mean_interval_width(values, values) == 0.0
+    assert mean_interval_width(values, values, values, relative=True) == 0.0
