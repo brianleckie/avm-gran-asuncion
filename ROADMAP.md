@@ -88,6 +88,7 @@
 ## F8 — Modelado
 - [ ] F8.1 (O) Target: `log(USD/m²)`. El valor total se obtiene como predicción × m²
 - [ ] F8.2 (O) Esquema de splits: (a) GroupKFold por `cluster_id`, (b) holdout temporal con los últimos snapshots, (c) leave-barrio-out para medir generalización espacial
+  → utilidades de split en splits.py; el esquema final se valida con datos reales (F7)
 - [ ] F8.3 (O) **Baseline:** mediana de USD/m² por barrio, con fallback a la ciudad. Es el número a superar
 - [ ] F8.4 (O) Modelo hedónico OLS, interpretable y defendible ante el tribunal
 - [ ] F8.5 (O) Random Forest
@@ -102,7 +103,7 @@
 - [ ] F9.4 (O) Verificar que los intervalos son más anchos en barrios con poca data. Si no lo son, algo está mal
 
 ## F10 — Evaluación y ablation
-- [ ] F10.1 (B/O) Métricas: MdAPE, MAPE, PE10/PE20 (% de predicciones dentro de ±10% y ±20%), RMSE en log
+- [x] F10.1 (B/O) Métricas: MdAPE, MAPE, PE10/PE20 (% de predicciones dentro de ±10% y ±20%), RMSE en log
 - [ ] F10.2 (B/O) Tabla comparativa: baseline vs OLS vs RF vs LightGBM, en los tres esquemas de split
 - [ ] F10.3 (B/O) **Ablation geo:** con y sin features espaciales. Responde directamente la pregunta de investigación
 - [ ] F10.4 (B/O) Error por segmento: ciudad, tipo y rango de precio
