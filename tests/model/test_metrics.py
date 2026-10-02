@@ -65,8 +65,8 @@ def test_pe_within_boundary_is_inclusive_despite_floating_point_rounding():
 
 
 # El margen es solo para el redondeo: un error realmente mayor sigue quedando afuera.
-# y = 100: ŷ = 110,00001 → error relativo 0,1000001 > 0,1;  ŷ = 110,1 → 0,101 > 0,1.
-@pytest.mark.parametrize("y_pred", [110.00001, 110.1])
+# y = 100: ŷ = 110,00000001 → error 0,1000000001;  ŷ = 110,00001 → 0,1000001;  ŷ = 110,1 → 0,101.
+@pytest.mark.parametrize("y_pred", [110.00000001, 110.00001, 110.1])
 def test_pe_within_rounding_margin_does_not_admit_a_really_larger_error(y_pred):
     assert pe_within([100], [y_pred], 0.1) == 0.0
 

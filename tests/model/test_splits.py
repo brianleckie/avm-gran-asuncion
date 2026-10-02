@@ -424,6 +424,28 @@ INVALID_TEMPORAL = [
         id="fechas con zona horaria",
     ),
     pytest.param(
+        ["2026-01-01T00:00:00Z", "2026-01-05T00:00:00Z"],
+        CUTOFF,
+        None,
+        "snapshot_dates.*zona horaria",
+        id="fechas ISO con Z",
+    ),
+    pytest.param(
+        ["2026-01-01T00:00:00-03:00", "2026-01-05T00:00:00-03:00"],
+        CUTOFF,
+        None,
+        "snapshot_dates.*zona horaria",
+        id="fechas ISO con offset",
+    ),
+    pytest.param(DATES, "2026-01-03T00:00:00Z", None, "cutoff.*zona horaria", id="corte ISO con Z"),
+    pytest.param(
+        DATES,
+        "2026-01-03T00:00:00+02:00",
+        None,
+        "cutoff.*zona horaria",
+        id="corte ISO con offset",
+    ),
+    pytest.param(
         DATES,
         CUTOFF,
         np.array(["a", np.float32("nan"), "b", "c", "d"], dtype=object),

@@ -21,8 +21,8 @@ vistos según el dedup", no "inmuebles nunca vistos".
 Los splits son reproducibles: no hay azar sin semilla explícita, y el resultado no depende del
 orden de las filas. Con la misma versión de numpy (la fija uv.lock) y los mismos datos, el reparto
 es idéntico; la asignación cluster → fold de `grouped_kfold` depende del conjunto completo de
-clusters, así que cambia si cambian los datos (conviene guardarla en el manifest del modelo,
-principio 6 del ROADMAP, si se la usa para ajustar hiperparámetros).
+clusters, así que puede cambiar si cambian los datos (conviene guardarla en el manifest del
+modelo, principio 6 del ROADMAP, si se la usa para ajustar hiperparámetros).
 
 Los índices de cada array salen ordenados de menor a mayor y son posiciones en el array que se
 pasó. Si se llama con un subconjunto (por ejemplo `cluster_ids[train]`), hay que mapearlos de
@@ -31,6 +31,8 @@ vuelta a las posiciones del dataset original.
 
 from __future__ import annotations
 
+import warnings
+from collections.abc import Callable
 from typing import Any, NamedTuple
 
 import numpy as np
@@ -82,6 +84,20 @@ def _factorize(labels: NDArray[Any], name: str) -> tuple[NDArray[Any], IndexArra
     return uniques, codes.reshape(-1).astype(np.intp)
 
 
+def _without_timezone[T](convert: Callable[[], T], name: str) -> T:
+    """Ejecuta `convert()` y falla si numpy tuvo que interpretar una zona horaria.
+
+    numpy no rechaza las zonas horarias: convierte a UTC (12:00-03:00 pasa a 15:00) y solo emite un
+    UserWarning. Eso cubre también los strings ISO con "Z" u offset, que no tienen `tzinfo`.
+    """
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = convert()
+    if any("timezone" in str(warning.message) for warning in caught):
+        raise ValueError(f"{name}: no se admiten fechas con zona horaria")
+    return result
+
+
 def _as_dates(values: ArrayLike, name: str) -> NDArray[np.datetime64]:
     """Array 1-D de fechas (datetime64), no vacío y sin NaT."""
     array = np.asarray(values)
@@ -92,9 +108,9 @@ def _as_dates(values: ArrayLike, name: str) -> NDArray[np.datetime64]:
     if array.dtype.kind in "biuf":  # un número se interpretaría en silencio como época
         raise ValueError(f"{name}: debe contener fechas, no números")
     if array.dtype.kind == "O" and any(_has_timezone(value) for value in array):
-        raise ValueError(f"{name}: no se admiten fechas con zona horaria")  # numpy la descartaría
+        raise ValueError(f"{name}: no se admiten fechas con zona horaria")
     try:
-        dates = array.astype("datetime64[us]")
+        dates = _without_timezone(lambda: array.astype("datetime64[us]"), name)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{name}: no se puede interpretar como fechas ({exc})") from exc
     if np.isnat(dates).any():
@@ -106,9 +122,9 @@ def _as_cutoff(cutoff: object) -> np.datetime64:
     if isinstance(cutoff, bool | int | float | np.number):
         raise ValueError(f"cutoff: debe ser una fecha, no un número (recibido {cutoff!r})")
     if _has_timezone(cutoff):
-        raise ValueError("cutoff: no se admiten fechas con zona horaria")  # numpy la descartaría
+        raise ValueError("cutoff: no se admiten fechas con zona horaria")
     try:
-        value = np.datetime64(cutoff, "us")
+        value = _without_timezone(lambda: np.datetime64(cutoff, "us"), "cutoff")
     except (TypeError, ValueError) as exc:
         raise ValueError(f"cutoff: no se puede interpretar como fecha ({exc})") from exc
     if np.isnat(value):
@@ -225,8 +241,9 @@ def temporal_holdout(
       y puede obtenerlas con `np.setdiff1d(np.flatnonzero(snapshot_dates >= cutoff), test)`.
     - Un cluster nuevo que aparece en varios snapshots posteriores al corte conserva todas sus
       filas en test: los inmuebles más persistentes pesan más en las métricas y esas filas no son
-      independientes (afecta la cobertura de los intervalos, F9.2 y F9.3). Reducir a una fila por
-      cluster, con una regla que dependa solo de la fecha y nunca del precio, queda para F5.3.
+      independientes (puede volver menos precisa la cobertura estimada de los intervalos, F9.2 y
+      F9.3). Reducir a una fila por cluster, con una regla que dependa solo de la fecha y nunca
+      del precio, queda para F5.3.
     - La garantía es "clusters no vistos según el dedup". Si F5.2 separa en clusters distintos
       dos publicaciones del mismo inmueble (por ejemplo, por un cambio de precio mayor que su
       umbral de similitud), ese inmueble queda a ambos lados del corte sin que esta función lo
@@ -238,7 +255,8 @@ def temporal_holdout(
     El corte se compara como instante contra las fechas (un día se toma a las 00:00): un corte
     con hora posterior a medianoche deja el snapshot de ese día en train. Para que el día del
     corte sea test, hay que pasar el corte sin hora. No se admiten fechas ni cortes con zona
-    horaria (ValueError): numpy las descartaría en silencio.
+    horaria (ValueError), sean objetos con `tzinfo` o strings ISO con "Z" u offset: numpy los
+    convertiría a UTC con solo un aviso, y el borde del corte se movería sin que se note.
 
     Errores (ValueError): fechas vacías, no 1-D, numéricas, con zona horaria, no interpretables o
     con NaT; corte numérico, con zona horaria, no interpretable o NaT; `cluster_ids` de otro largo
@@ -291,8 +309,8 @@ def leave_group_out(groups: ArrayLike) -> dict[Any, Split]:
 
     Es leave-GROUP-out, no leave-cluster-out: no recibe `cluster_ids`. Si las copias de un mismo
     inmueble quedan etiquetadas con barrios distintos (F4.4), están en grupos distintos y una
-    puede quedar en train mientras otra es test. El blocking por barrio de F5.2 hace improbable
-    que un cluster cruce barrios, pero esta función no lo verifica.
+    puede quedar en train mientras otra es test. Según el diseño previsto en F5.2, el blocking por
+    barrio haría improbable que un cluster cruce barrios, pero esta función no lo verifica.
 
     Errores (ValueError): grupos vacíos, no 1-D, con None o NaN, no comparables, o menos de 2
     grupos distintos (sin al menos dos no queda train).
