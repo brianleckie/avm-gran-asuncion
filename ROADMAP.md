@@ -89,7 +89,7 @@
 - [ ] F8.1 (O) Target: `log(USD/m²)`. El valor total se obtiene como predicción × m²
 - [ ] F8.2 (O) Esquema de splits: (a) GroupKFold por `cluster_id`, (b) holdout temporal con los últimos snapshots, (c) leave-barrio-out para medir generalización espacial
   → utilidades de split en splits.py; el esquema final se valida con datos reales (F7)
-  → decisión: `temporal_holdout` con `cluster_ids` excluye del TEST los clusters ya vistos en train y deja el train completo; el test mide inmuebles nunca vistos y pierde los republicados (ver docstring)
+  → decisión: `temporal_holdout` con `cluster_ids` excluye del TEST los clusters ya vistos en train y deja el train completo; el test mide inmuebles no vistos según el dedup y pierde los republicados; sesgos y límites en el docstring
 - [ ] F8.3 (O) **Baseline:** mediana de USD/m² por barrio, con fallback a la ciudad. Es el número a superar
 - [ ] F8.4 (O) Modelo hedónico OLS, interpretable y defendible ante el tribunal
 - [ ] F8.5 (O) Random Forest
