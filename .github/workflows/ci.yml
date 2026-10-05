@@ -35,6 +35,13 @@ jobs:
       - name: mypy (contract, modo estricto)
         run: uv run mypy src/avm/contract
 
-      # Cobertura ≥ 95 % solo sobre el módulo de parsers; el umbral se amplía cuando haya más módulos.
       - name: pytest
-        run: uv run pytest --cov=avm.pipeline.parsing --cov-branch --cov-report=term-missing --cov-fail-under=95
+        run: uv run pytest --cov=avm.pipeline.parsing --cov=avm.model.metrics --cov=avm.model.splits --cov-branch --cov-report=
+
+      # Cobertura ≥ 95 % (líneas y ramas) por módulo, no sobre el total combinado: un total puede
+      # esconder un módulo flojo detrás de otro al 100 %. Sale con error si falta cobertura o datos.
+      - name: cobertura por módulo (≥ 95 %)
+        run: |
+          uv run coverage report --show-missing --include=src/avm/pipeline/parsing.py --fail-under=95
+          uv run coverage report --show-missing --include=src/avm/model/metrics.py --fail-under=95
+          uv run coverage report --show-missing --include=src/avm/model/splits.py --fail-under=95
