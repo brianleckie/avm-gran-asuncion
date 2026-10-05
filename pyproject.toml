@@ -21,6 +21,11 @@ dev = [
     "hypothesis",
     "coverage",
 ]
+# Opcional: solo para scripts/recon (F3.1) y el scraping. No lo instala `uv sync` por defecto ni el CI;
+# se usa con `uv run --group scraping ...`.
+scraping = [
+    "httpx",
+]
 
 [build-system]
 requires = ["hatchling"]
