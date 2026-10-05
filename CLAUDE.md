@@ -35,6 +35,7 @@ docs/adr/           decisiones de arquitectura
 - `uv run pytest` · `uv run ruff check --fix . && uv run ruff format .`
 - `just <tarea>` para el pipeline (ver justfile)
 - mypy corre strict solo sobre src/avm/contract (configurado vía `files` en pyproject.toml). No correr `mypy src/` ni `mypy .`: aplica strict a todo el proyecto. No intentar resolverlo con overrides por módulo, ver comentario en pyproject.toml.
+- Desarrollo principal en Windows 11 (PowerShell); CI en Ubuntu. Toda receta del justfile debe funcionar en ambos.
 
 ## Cómo trabajamos
 1. Arrancá cada tarea en **plan mode**: leé el código relevante, proponé un plan corto y esperá aprobación.
