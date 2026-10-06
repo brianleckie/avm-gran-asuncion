@@ -27,7 +27,7 @@
 ## F1 — Contrato de datos (bloqueante para todo lo demás)
 - [ ] F1.1 (B/O) Definir alcance: venta, tipos {casa, departamento, duplex}, ciudades {Asunción, Luque, San Lorenzo, Fernando de la Mora}. Terrenos y alquileres quedan **fuera**
 - [ ] F1.2 (B/O) `RawListing`: lo que devuelve el parser, todo opcional y texto crudo, más `fuente`, `url`, `fecha_scrape` y `hash_html`
-- [ ] F1.3 (B/O) `Listing`: limpio y tipado (precio_usd, m2_construidos, m2_terreno, dormitorios, baños, cocheras, barrio_norm, ciudad, flags de amenities, lat/lon opcional, `geo_precision ∈ {barrio, aproximada, exacta}`)
+- [ ] F1.3 (B/O) `Listing`: limpio y tipado (precio_usd, m2_construidos, m2_terreno, dormitorios, baños, cocheras, barrio_norm, ciudad, flags de amenities, lat/lon opcional, `geo_precision ∈ {exacta, aproximada, barrio, ciudad}`)
 - [ ] F1.4 (B/O) `FeatureRow`: input del modelo, con columnas y tipos congelados
 - [ ] F1.5 (B/O) `PredictionRequest` / `PredictionResponse`: estimación, intervalo [p_low, p_high], nivel de cobertura, warnings, versión del modelo y la leyenda "precio de oferta"
 - [ ] F1.6 (B/O) Diccionario de datos en `docs/data_dictionary.md`, generado desde los schemas
@@ -79,7 +79,7 @@
 - [ ] F6.2 (O) Centroides: polígonos OSM cuando existan; si no, Nominatim con caché. Registrar el método por barrio
 - [ ] F6.3 (O) Snapshot de POIs vía Overpass, con fecha: avenidas principales (primary/trunk), shoppings, colegios, universidades, hospitales y parques
 - [ ] F6.4 (O) Features: distancia centroide → POI más cercano por categoría, conteo de POIs en radio R y distancia a centros de empleo (microcentro, eje corporativo)
-- [ ] F6.5 (O) Si hay lat/lon, mismas features con precisión `exacta`. Flag en el modelo
+- [ ] F6.5 (O) Si hay lat/lon, mismas features con precisión `aproximada` o `exacta` (hoy ninguna fuente demostró `exacta`, ADR-006). Flag en el modelo
 - [ ] F6.6 (O) (Opcional) Zona fiscal catastral por barrio como feature o benchmark
 - [ ] F6.7 (O) Documentar la limitación: las features son a nivel barrio y dentro de un mismo barrio no discriminan entre propiedades
 
