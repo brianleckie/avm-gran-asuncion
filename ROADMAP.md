@@ -46,12 +46,17 @@
 ## F3 — Scraping
 - [x] F3.1 (B) Reconocimiento por fuente (InfoCasas, Clasipar, otras): robots.txt, ToS, paginación, si existe JSON embebido (`__NEXT_DATA__`, JSON-LD) o API interna. Documentar en `docs/sources.md`
   → los ToS de InfoCasas (cláusula XVII) prohíben bots y scrapers: se frenó tras 19 requests, sin fixtures, y queda descartada salvo permiso escrito. Se prioriza Clasipar (ToS sin cláusula anti-bot, pero prohíben reproducir contenido: no publicar el crudo). "Otras" fuentes no se relevaron. Cliente de reconocimiento en `scripts/recon/` (6 s entre requests, tope de 25 por fuente)
-- [ ] F3.2 (B) `BaseScraper`: httpx, rate limit de 1 req cada 2-3 s, retries con backoff, user-agent identificable, caché de HTML crudo en disco
+- [x] F3.2 (B) `BaseScraper`: httpx, rate limit de 1 req cada 6 s más jitter, retries con backoff, user-agent identificable, caché de HTML en disco (sanitizado)
+  → `src/avm/scraping/base.py`. Una request a la vez con 6 s más un jitter de 0 a 1 s (solo configurable hacia más conservador), presupuesto de requests obligatorio y duro, robots.txt con `urllib.robotparser` (no entiende comodines `*` ni `$`: Clasipar no los usa), 403, 429 o challenge detienen la corrida, reintentos solo de timeouts y 5xx (máximo 2). Decisiones: **D1** la caché se escribe sanitizada (sin teléfonos, emails, WhatsApp, nombres de anunciantes, slugs `/empresa/`, logos ni links a sitios de terceros), nunca HTML crudo; falla cerrado. **D3** el parser sanitiza antes de construir el `RawListing` (el contrato queda de red de seguridad). **D4** `httpx` y `selectolax` son dependencias de runtime. El registro (`requests.jsonl`) y el `manifest.json` son por fuente y snapshot: `data/raw/<fecha>/<fuente>/`
 - [ ] F3.3 (B) Crawler de listados → URLs de avisos, filtrados por venta, tipo y ciudad
-- [ ] F3.4 (B) Parser por fuente → `RawListing`. **Tests con fixtures HTML guardados**, porque los selectores se rompen
+  → hecha la parte pura (`search_urls`, `page_url` y `merge_refs` en `sources/clasipar.py`); falta el loop que recorre las páginas con `BaseScraper`. **D5**: las tarjetas patrocinadas se incluyen, se deduplican por `source_id` dentro de la corrida y se marcan en `attributes_raw` con `patrocinado` = `si`
+- [x] F3.4 (B) Parser por fuente → `RawListing`. **Tests con fixtures HTML guardados**, porque los selectores se rompen
+  → solo Clasipar (InfoCasas descartada): `src/avm/scraping/sources/clasipar.py`, con selectores en `docs/sources.md` §2.8 y 3 fixtures de detalle y 1 de listado. El detalle no trae la operación ni el tipo de anunciante del aviso (son de los relacionados): se toman de la tarjeta (`ListingRef`). **D2**: `content_hash` = sha256 de un JSON canónico del contenido, sin `scraped_at` ni atributos volátiles. Los tests usan valores escritos a mano desde el HTML. Crudo local borrado (`docs/sources.md` §8.3)
 - [ ] F3.5 (B) Excluir datos personales: teléfonos, nombres de agentes y emails no se persisten
+  → cubierto en lo esencial por D1 y D3 (caché y `RawListing` sanitizados). Pendiente: nombres de personas en texto libre (título o descripción), dominios sin esquema ("sitio.com.py") y los falsos negativos del regex (por ejemplo "981 123 456", sin el `0`)
 - [ ] F3.6 (B) Modo incremental (re-scrape solo de lo nuevo) y detección de avisos dados de baja
 - [ ] F3.7 (B) Snapshot fechado `data/raw/<fecha>/` con manifest (conteos por fuente/ciudad y hash)
+  → parcial: `BaseScraper` escribe un `manifest.json` por fuente (inicio, fin, presupuesto, requests usadas, conteos por resultado y `CONTRACT_VERSION`). Falta el manifest del snapshot completo (conteos por ciudad y hash)
 - [ ] F3.8 (B) Monitor de salud: si un parser devuelve más de X% de campos nulos, falla ruidosamente
 
 ## F4 — Limpieza y normalización
