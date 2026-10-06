@@ -1,56 +1,44 @@
-"""Convierte páginas crudas en fixtures: recorta lo irrelevante y reemplaza datos personales.
+"""Convierte páginas crudas en fixtures: recorta lo irrelevante y elimina datos personales.
 
 Uso (desde la raíz del repo):
     $env:PYTHONPATH = "scripts"
     uv run python -m recon.sanitize clasipar <crudo>=<fixture> [<crudo>=<fixture> ...]
 
-Reemplazos: teléfonos -> [TELEFONO], emails -> [EMAIL], links de WhatsApp -> [WHATSAPP], nombres
-de anunciantes (personas o inmobiliarias) -> [NOMBRE], su slug de /empresa/ -> [EMPRESA] y sus
-logos y fotos de perfil -> [LOGO] / [FOTO_PERFIL]. Las
-reglas de nombres dependen de la estructura observada en cada fuente, así que el resultado se
-revisa a mano: el test tests/scraping/test_fixtures_pii.py cubre teléfonos y emails, no nombres.
+Usa el MISMO sanitizador que la caché del scraper (`avm.scraping.sources.clasipar`): elimina los
+bloques de anunciante (nombre, perfil, logo, foto y contacto enmascarado), las imágenes de logo y
+de perfil, y reemplaza teléfonos -> [TELEFONO], emails -> [EMAIL] y WhatsApp -> [WHATSAPP]. Falla
+cerrado si queda un rastro. Los nombres de personas escritos en texto libre (título o descripción)
+no se pueden detectar con un regex: el resultado se revisa a mano, y el test
+tests/scraping/test_fixtures_pii.py cubre teléfonos y emails, no nombres.
 
 Recorte: se quitan <script> (salvo JSON-LD), <style>, <svg>, <iframe>, <noscript> y comentarios.
 Se conservan los <span> con font-size:0 (marca de agua de Clasipar): son parte de la estructura
-real que el parser de F3.4 tiene que saber ignorar. Se escribe en UTF-8 con finales de línea LF.
+real que el parser tiene que saber ignorar. Se escribe en UTF-8 con finales de línea LF.
+
+Los fixtures detalle_1, detalle_2 y listado se generaron con la versión anterior
+(`scrub_clasipar_names`, que reemplaza nombres por [NOMBRE] en lugar de eliminar los bloques).
+Esa función queda por compatibilidad con sus tests y NO se usa en producción ni en `build`.
 """
 
 from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
-from avm.contract.pii import EMAIL, PHONE
+from avm.scraping.sources.clasipar import sanitize_clasipar_html
 
 RECON_DIR = Path("data/raw/recon")
 FIXTURES_DIR = Path("tests/fixtures")
 MAX_FIXTURE_BYTES = 450_000
 
-# Teléfonos y emails: los mismos patrones con los que RawListing rechaza datos personales.
-# WhatsApp va aparte porque acá hay que reemplazar el link entero, no solo detectarlo.
-WHATSAPP = re.compile(r"(?:https?:)?//(?:wa\.me|api\.whatsapp\.com)/[^\s\"'<]*", re.I)
-
-_DROP = re.compile(
-    r"<script(?![^>]*application/ld\+json)[^>]*>.*?</script>"
-    r"|<(style|svg|iframe|noscript)\b[^>]*>.*?</\1>"
-    r"|<!--.*?-->",
-    re.S | re.I,
-)
-
-
-def trim(page: str) -> str:
-    page = _DROP.sub("", page)
-    return re.sub(r"\n\s*\n+", "\n", page)
-
-
-def scrub_contacts(page: str) -> str:
-    page = WHATSAPP.sub("[WHATSAPP]", page)
-    page = EMAIL.sub("[EMAIL]", page)
-    return PHONE.sub("[TELEFONO]", page)
+# Una fuente sin sanitizador no se puede guardar: nunca se persiste HTML crudo (CLAUDE.md).
+SANITIZERS: dict[str, Callable[[str], str]] = {"clasipar": sanitize_clasipar_html}
 
 
 def scrub_clasipar_names(page: str) -> str:
+    """Versión anterior (placeholders [NOMBRE]); ver el docstring del módulo."""
     empresa = r"https://clasipar\.paraguay\.com/empresa/"
     # Slug del anunciante (incluye su nombre).
     page = re.sub(empresa + r"[^\"'\s<]+", "https://clasipar.paraguay.com/empresa/[EMPRESA]", page)
@@ -85,12 +73,9 @@ def scrub_clasipar_names(page: str) -> str:
     return header.sub(_header, page)
 
 
-SCRUBBERS = {"clasipar": scrub_clasipar_names}
-
-
 def build(source: str, raw_name: str, fixture_name: str) -> Path:
     page = (RECON_DIR / source / f"{raw_name}.body").read_text(encoding="utf-8")
-    page = SCRUBBERS[source](scrub_contacts(trim(page)))
+    page = SANITIZERS[source](page)
     size = len(page.encode("utf-8"))
     if size > MAX_FIXTURE_BYTES:
         raise SystemExit(

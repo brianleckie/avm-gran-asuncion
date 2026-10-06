@@ -4,8 +4,9 @@ Relevamiento hecho el 5 de octubre de 2026 (hora de Paraguay) desde una IP resid
 `scripts/recon/`. No es un scraping: son pocas páginas para documentar qué ofrece cada portal.
 
 - User-agent: `AVM-GranAsuncion-Academic/0.1 (proyecto universitario; contacto: https://github.com/brianleckie)`.
-- 6 s entre requests, una a la vez, sin reintentos, tope de 25 requests por fuente (las fallidas
-  también cuentan). Las URLs se validaron contra robots.txt antes de pedirlas.
+- 6 s entre requests, una a la vez, tope de 25 requests por fuente (las fallidas también cuentan)
+  y sin reintentos, salvo el `robots.txt` de la compuerta de red (ver §8.2). Las URLs se validaron
+  contra robots.txt antes de pedirlas.
 - Requests usadas: **InfoCasas 19/25** (frenada por sus ToS, ver abajo) y **Clasipar 22/25**.
   No hubo ningún 403, 429 ni challenge.
 - Todo lo que sigue sale de esas páginas. Lo que no se vio se marca como "no relevado". Los
@@ -160,8 +161,12 @@ Afecta sobre todo a **reproducir** contenido (fixtures en un repo público, publ
   `residencias-mansiones`, una categoría aparte que puede tener casas dentro del alcance
   (no relevada).
 - Ciudades: `asuncion-3`, `luque-30`, `san-lorenzo-35` y `fernando-de-la-mora-23`.
-- Paginación: `.../page-2`. Muestra 23 a 25 tarjetas por página, incluidas las de destacado y
-  premium (en casas de Asunción: 6 `box-anuncio--destacado` y 7 `box-anuncio--premium`).
+- Paginación: `.../page-2`. Cada página trae 23 a 25 tarjetas **orgánicas** y, además, de 0 a 13
+  patrocinadas (`box-anuncio--premium` o `box-anuncio--destacado`): una página llega a 37
+  tarjetas (casas de Asunción, página 1: 24 orgánicas y 13 patrocinadas, 7 premium y 6
+  destacado). En las 13 páginas: 366 tarjetas, 318 orgánicas y 48 patrocinadas (31 premium y 17
+  destacado). La versión anterior decía "23 a 25 tarjetas por página, incluidas las patrocinadas"
+  (ver §8.1).
 - En las 13 páginas pedidas, el 100 % de las tarjetas tenía la ciudad y la intención ("Vendo")
   pedidas en sus etiquetas estructuradas. Algunos títulos nombran otra ciudad (Lambaré, Itauguá):
   es una inconsistencia del anunciante, no del filtro.
@@ -178,6 +183,27 @@ Conteos ("N Resultados" visible en cada página):
 
 El total es de 10 003, sin deduplicar. Incluye avisos fuera de alcance publicados en esas
 categorías: en la muestra hubo un terreno dentro de "casas" y un local comercial con vivienda.
+
+**Detección de la última página** (verificada en las 13 páginas del crudo; lo que se ve en
+`tests/fixtures/clasipar/listado.html`, página 1 de casas de Asunción):
+- `<link rel="next" href=".../page-N+1">` en el `<head>`. Está en las 13 páginas (12 primeras y la
+  página 2 de casas de Asunción, que además trae `rel="prev"`).
+- `ul#pagination` con un `<li class="active"><a data-page="N">` (página actual) y enlaces
+  `data-page="K"` a las primeras 10 páginas y a la última. El máximo `data-page` es la última
+  página y en las 13 páginas es `ceil(Resultados / 25)` (2.773 → 111, 409 → 17, 67 → 3).
+  Los enlaces son `javascript:;` con `onclick="ads_list(K)"`: no llevan `href`, la URL
+  de la página K se arma como `.../page-K`.
+- "N Resultados" en `<p><small><strong>2.773 Resultados</strong></small></p>` (punto de miles).
+- **No verificado:** qué trae la última página (no hay captura de ninguna) ni qué responde
+  `.../page-K` pasando la última. No se asume que `rel="next"` desaparezca ahí: el parser lo usa
+  si está y cae al `data-page` activo contra el máximo.
+
+**Tarjetas patrocinadas (decisión D5).** `box-anuncio--premium` y `box-anuncio--destacado` se
+incluyen, no se descartan. Un premium puede repetirse entre páginas (uno en las páginas 1 y 2 de
+casas de Asunción), así que se deduplican por `source_id` dentro de la corrida y quedan marcadas
+en `attributes_raw` con `patrocinado` = `si` (basta con que alguna aparición lo sea). La marca
+es volátil: no entra en el `content_hash`. Que un aviso esté patrocinado no cambia su alcance;
+eso lo valida `Listing` más adelante.
 
 ### 2.4 Cómo vienen los datos
 - **No hay `__NEXT_DATA__` ni estado inicial.** Es HTML renderizado del lado del servidor.
@@ -203,12 +229,14 @@ categorías: en la muestra hubo un terreno dentro de "casas" y un local comercia
   parser tiene que descartar estos spans por el estilo, no por la clase.**
 
 ### 2.5 Matriz de campos
-Las tarjetas son 318 avisos únicos de los 13 listados. Los detalles son **solo 3**, así que en el
-detalle "siempre/a veces" describe esa muestra, no el portal.
+Las 13 páginas de listado (venta × tipo × ciudad, más la página 2 de casas de Asunción) traen
+366 tarjetas: 365 avisos únicos (318 orgánicos y 47 patrocinados distintos; un premium se repite
+en las páginas 1 y 2 de casas de Asunción). Los detalles son **solo 3**, así que en el detalle
+"siempre/a veces" describe esa muestra, no el portal. Cifras corregidas el 2026-10-06 (ver §8.1).
 
 | Campo | Presencia | Path | Ejemplo crudo |
 |---|---|---|---|
-| precio | tarjeta: siempre (1/318 "Consultar precio."); detalle 3/3 | `p.price`, `h3.user-price` | `US$. 235.000,00` |
+| precio | tarjeta: siempre (1/366 "Consultar precio."); detalle 3/3 | `p.price`, `h3.user-price` | `US$. 235.000,00` |
 | moneda | dentro del string del precio: `US$.` o `Gs.` | idem | `Gs. 1.200.000.000` |
 | m² construidos | **nunca estructurado**; a veces en título o descripción | texto libre | `Construcción: 90 m²` |
 | m² de terreno | **nunca estructurado**; a veces en texto | texto libre | `Terreno: 180 m²` |
@@ -229,6 +257,14 @@ detalle "siempre/a veces" describe esa muestra, no el portal.
 Precisión de lat/lon: no se pudo evaluar con 2 casos. Que "Publicado el" sea la fecha original o
 la de la última republicación es **no verificado**.
 
+**Pista, NO verificada: superficie de terreno estructurada.** El filtro lateral de `/inmuebles/casas`
+tiene un rango numérico "Superficie de terreno m2" (mínimo y máximo, `data-name="taxonomy"`,
+`data-id="13"`). Eso sugiere que el portal guarda la superficie del terreno como atributo
+(opcional, que carga el anunciante), cosa que la fila de m² de la matriz da por inexistente. En
+ninguno de los 3 detalles ni de las tarjetas relevadas apareció como `span.ads_tag`, y no hay un
+filtro equivalente para la superficie construida. Se revisa en el piloto con más detalles. No
+cambia nada de lo anterior hasta entonces.
+
 ### 2.6 Datos personales
 - **Detalle:** el nombre del anunciante (persona o asesor/inmobiliaria) está en
   `.infoAnunciante__header h5`, en `title`/`alt` de su imagen y en el slug de
@@ -247,6 +283,70 @@ la de la última republicación es **no verificado**.
 - reCAPTCHA en los formularios (denuncia de aviso).
 - El token en `POST /src/async/request`.
 - No se vio ningún challenge, captcha bloqueante ni 429 en 22 requests a 6 s.
+
+### 2.8 Selectores implementados (F3.4)
+Los implementa `src/avm/scraping/sources/clasipar.py` y los verifican `tests/scraping/sources/
+test_clasipar.py` contra los fixtures de `tests/fixtures/clasipar/`. Vale para el HTML sanitizado
+de la caché y para el crudo: sanitizar no cambia lo que se extrae (comprobado sobre las 13 páginas
+de listado y los 3 detalles).
+
+**Tarjeta del listado** (`article.box-anuncio`; también las que traen `box-anuncio--premium` o
+`box-anuncio--destacado`, que van en cualquier orden dentro de `class`):
+
+| Dato | Selector |
+|---|---|
+| URL y `source_id` | `a.titAnuncio` → `href` (absoluto); el `source_id` es su sufijo numérico |
+| `title_raw` | texto de `a.titAnuncio` |
+| `price_raw` | `p.price` (el texto, sin interpretar: "Consultar precio." queda tal cual) |
+| `operation_raw` | primer `<strong>` de `h6` ("Vendo") |
+| `advertiser_type_raw` | segundo `<strong>` de `h6`, el de "Ofrecido por:" ("Inmobiliaria" o "Particular") |
+| patrocinada | `class` con `box-anuncio--premium` o `box-anuncio--destacado` |
+
+**Paginación**: `link[rel="next"]` (URL de la página siguiente), `ul#pagination li.active
+a[data-page]` (página actual), el mayor `a[data-page]` de `ul#pagination` (última página) y
+`small strong` con el texto "N Resultados" (punto de miles). Detalle y límites en §2.3.
+
+**Detalle del aviso** (`parse_detail`):
+
+| Campo de `RawListing` | Dónde sale |
+|---|---|
+| `source_id` | ficha "Nro. de Anuncio:"; si falta, el sufijo numérico de la URL; si ambos están y difieren, error |
+| `title_raw` | `h1.tit-anuncio` |
+| `description_raw` | `p.desc-user`, una línea por `<br>`, sin líneas vacías |
+| `price_raw` | `h3.user-price` |
+| `bedrooms_raw`, `bathrooms_raw` | `span.ads_tag` "Dormitorios" y "Baños" (el `<strong>`). El JSON-LD `numberOfRooms` y `numberOfBathroomsTotal` no se usan: su significado no está verificado |
+| `city_raw`, `neighborhood_raw`, `published_at_raw` | ficha "Ciudad:", "Zona" y "Publicado el:" (`dd/mm/aaaa`, sin interpretar) |
+| `latitude_raw`, `longitude_raw` | JSON-LD `House` o `Apartment`: `latitude` y `longitude`; vacíos (`""`) → `None` |
+| `property_type_raw` | categoría de la URL (`/inmuebles/{categoria}/…`: `casas`, `departamentos`, `duplex`); si la URL no la trae, el breadcrumb JSON-LD (posición 2, "Inmuebles / Departamentos" → "Departamentos") |
+| `operation_raw`, `advertiser_type_raw` | **no están en el detalle**: se toman de la tarjeta (`ListingRef`). Los "VENDO / DOY EN ALQUILER" y "Ofrecido por:" que aparecen en el detalle son de 3 avisos relacionados (la casa de Asunción muestra dos alquileres y un terreno) y de una plantilla JS; leerlos daría el dato de otro aviso |
+| `attributes_raw` | los demás `span.ads_tag` ("Habitación en suite", "Piscina", "Quincho"...), la ficha "Departamento:" (el departamento geográfico, "Central") y `patrocinado` = `si` si alguna tarjeta del aviso lo era. **No** "Nro. de Visitas" (volátil) |
+| `currency_raw`, `built_area_raw`, `land_area_raw`, `garages_raw`, `address_raw` | no existen en la fuente como campo propio (§2.5): quedan en `None` |
+
+- **Marca de agua**: se descarta por estilo (`span[style*="font-size:0"]`), no por clase, porque la
+  clase cambia en cada página.
+- **JSON-LD**: se lee con `json.loads(..., strict=False)`; si no se puede leer, se ignora.
+- **Datos personales (D3)**: todo texto pasa por `scrub_contacts` (teléfonos, emails y WhatsApp →
+  `[TELEFONO]`, `[EMAIL]`, `[WHATSAPP]`) y `scrub_urls` (links a sitios de terceros → `[URL]`) antes
+  de construir el `RawListing`. El nombre del anunciante nunca se extrae.
+- **`content_hash` (D2)**: sha256 de un JSON canónico (claves ordenadas, UTF-8, separadores `,` y
+  `:` sin espacios) con todos los campos del `RawListing` salvo `scraped_at`, `content_hash` y los
+  atributos volátiles (`patrocinado` y "Nro. de Visitas"). Dos requests del mismo aviso sin
+  cambios reales dan el mismo hash. La descripción del campo en `raw_listing.py` dice "contenido
+  crudo"; el contrato no se tocó, y esta es la definición vigente.
+
+**Sanitizado de la caché (D1)** (`sanitize_clasipar_html`): se eliminan `.infoAnunciante__header`
+(nombre, foto o logo y perfil), `.infoAnunciante__datos` (formulario con teléfono y email
+enmascarados), `span.box-anuncio__logo` y todo `a[href*="/empresa/"]`; las imágenes `/corporate/`
+y `/users/`; los `<script>` (salvo JSON-LD), `<style>`, `<svg>`, `<iframe>`, `<noscript>` y
+comentarios. En la descripción, el JSON-LD y los `<meta>` se reemplazan por `[URL]` los links a
+hosts que no son del portal (`clasipar.paraguay.com`, `clasicdn.paraguay.com`, `schema.org`); los
+`href` y `src` del resto del HTML no se tocan. Se reemplazan contactos y, si queda un rastro
+(`/empresa/`, `/corporate/`, `/users/` o un contacto), la página no se escribe (falla cerrado).
+- El detalle 2214004 traía el link al sitio de la inmobiliaria en la descripción, repetido en el
+  JSON-LD. Ahí el portal reescribe los links sin las barras (`https:sitio…`): `scrub_urls` también
+  esa forma.
+- **No se puede detectar**: un nombre de persona escrito en el título o la descripción, ni un
+  dominio sin esquema ("sitio.com.py"). Hay que revisar los fixtures a mano.
 
 ---
 
@@ -283,9 +383,13 @@ Riesgos de Clasipar:
   F3.4/F4.3.
 - **Barrio en texto libre ("Zona")**, a veces igual a la ciudad. Depende de F4.4 (gazetteer y
   fuzzy matching) y va a dejar avisos con precisión "ciudad".
-- **Calidad del dato:** 17 de 415 precios con montos implausibles para una venta (ver §5),
-  inmuebles fuera de alcance dentro de las categorías y títulos que nombran otra ciudad. Hacen
-  falta las reglas de F4.6 y un filtro de tipo por texto.
+- **Calidad del dato:** 13 de 366 precios con montos bajos para una venta (criterio en §5);
+  inmuebles fuera de alcance dentro de las categorías (5 de 365 títulos únicos mencionan local
+  comercial, salón comercial o quinta); 7 títulos que mencionan "alquil..." o "en alquiler" en
+  páginas con intención "Vendo" (5 de ellos también dicen "vend..." o "venta", como "alquilo o
+  vendo"); y títulos que nombran otra ciudad. Los tres conteos de títulos son búsquedas de esas
+  palabras (sin distinguir mayúsculas) sobre los 365 títulos de las 13 páginas, medidas antes de
+  borrar el crudo (§8.3). Hacen falta las reglas de F4.6 y un filtro de tipo por texto.
 - **Propiedad intelectual:** no publicar descripciones ni fotos, ni el dataset crudo. Los fixtures
   se recortaron y sanitizaron. Conviene revisarlo con el tutor.
 - La marca de agua y el JSON-LD mal formado vuelven frágil al parser. Por eso los tests de F3.4
@@ -311,28 +415,37 @@ modificó. Se cuentan ocurrencias: un destacado que se repite en dos páginas cu
   en esos campos (dato de la fuente). Todos con `kind=None`, porque la tarjeta muestra
   "135 m²" sin indicar si es construida o terreno (el JSON sí lo distingue).
 
-**Clasipar** (tarjetas y 3 detalles; sin valores estructurados, revisión manual):
-- `parse_price`: **414/415 parseados**. El único `None` es "Consultar precio.", que es el
-  comportamiento esperado.
+**Clasipar** (tarjetas de las 13 páginas de listado filtradas y 3 detalles; sin valores
+estructurados, revisión manual). Cifras corregidas el 2026-10-06: la versión original incluía
+la página genérica `/inmuebles/casas` (ver §8.1).
+- `parse_price`: **365/366 parseados** en las 13 páginas y **3/3** en los 3 detalles. El único
+  `None` es "Consultar precio.", que es el comportamiento esperado.
   - Formatos: `US$. 999.999,99` (coma decimal con centavos), `Gs. 999.999.999`.
   - Revisados a mano: en todos los casos el monto leído coincide con el string.
-  - **17 strings tienen montos implausibles para una venta** (`US$. 1,00`, `US$. 999,99`,
-    `Gs. 110`, `Gs. 1.500.000`...). No es un error del parser: van a tener que filtrarse en F4.6.
-- `parse_area`: 23 strings con m² en títulos y descripciones; **23/23 con el número correcto**
-  (revisión manual), incluido `1.213 m2` → 1213.
-  - `kind`: 18 `None`, 3 `construida`, 2 `terreno`.
+  - **13 strings con montos bajos para una venta** en las 13 páginas (`US$. 1,00`, `US$. 165,00`,
+    `Gs. 110`, `Gs. 600`, `Gs. 5.500.000`...). Criterio: USD < 10.000 o Gs < 100.000.000. Es solo
+    un umbral para localizarlos, no un rango plausible (eso se fija en F4.6 sin mirar el target,
+    ver ADR-006). No es un error del parser: van a tener que filtrarse en F4.6.
+- `parse_area`: en las 13 páginas, **18 strings con m² en títulos** (de 365 avisos únicos: 4,9 %,
+  todos únicos entre sí); en los 3 detalles, **4 líneas** con m² en las descripciones (las 3
+  mencionan m²). En total **22 strings únicos**. El número es correcto en los 22 (revisión manual
+  de F3.1 sobre los mismos strings), incluido `1.213 m2` → 1213.
+  - `kind` en las 13 páginas: 15 `None`, 2 `construida`, 1 `terreno`. En los detalles: 2 `None`,
+    1 `construida`, 1 `terreno`. Total: **17 `None`, 3 `construida`, 2 `terreno`**.
   - Uno dudoso: "940M2 C/ CONSTRUCCION" → `construida`, cuando probablemente se refiere al lote
     *con* construcción.
   - "desde 68 m2" se lee como 68, sin marca de "desde": `ParsedArea` no tiene ese flag.
 
-**Datos para el ADR-005** (`currency=None`): de 688 strings de precio de las dos fuentes se
-parsearon 687, y **ninguno** quedó con `currency=None`. Las dos publican la moneda explícita en el campo
-del precio (InfoCasas además en un campo estructurado). En la muestra, el caso sin moneda no
-aparece en el precio principal. Puede existir en otros lugares (descripciones) o en otras
-fuentes. El ADR-005 no se modificó.
+**Datos para el ADR-005** (`currency=None`): de 642 strings de precio de las dos fuentes
+(InfoCasas 273; Clasipar 366 de las 13 páginas y 3 de detalles) se parsearon 641, y **ninguno**
+quedó con `currency=None`. Las dos publican la moneda explícita en el campo del precio (InfoCasas
+además en un campo estructurado). En la muestra, el caso sin moneda no aparece en el precio
+principal. Puede existir en otros lugares (descripciones) o en otras fuentes. El ADR-005 no se
+modificó.
 
-**Datos para el ADR-004** (moneda): InfoCasas 176 USD / 97 PYG (n=273). Clasipar 229 USD /
-185 PYG (n=414). Son muestras de las primeras páginas, no proporciones del portal.
+**Datos para el ADR-004** (moneda): InfoCasas 176 USD / 97 PYG (n=273). Clasipar, en las 13
+páginas: 207 USD / 158 PYG (n=365); en los 3 detalles: 1 USD / 2 PYG. Son muestras de las primeras
+páginas, no proporciones del portal.
 
 ## 6. Implicancias para el contrato (F1)
 
@@ -348,7 +461,8 @@ cambio lleva ADR.
 3. **Barrio opcional y crudo.** InfoCasas no da barrio en Central y Clasipar lo da como texto
    libre ("Zona"). `RawListing` debería conservar el texto crudo de ubicación (zona, dirección,
    título) para F4.4. Muchos avisos van a quedar con precisión "ciudad", un nivel que el
-   ADR-003 no contempla hoy (`barrio | aproximada | exacta`).
+   ADR-003 no contemplaba (`barrio | aproximada | exacta`); el 2026-10-06 se actualizó a los
+   cuatro niveles del contrato (§7).
 4. **lat/lon opcionales y nunca "exactas" por defecto.** InfoCasas trae coordenadas compartidas
    entre avisos y Clasipar las trae vacías a veces. Apoya el ADR-003: sin validación, como mucho
    precisión `aproximada`.
@@ -364,26 +478,89 @@ cambio lleva ADR.
 
 ## 7. Decisiones abiertas
 - InfoCasas: pedir autorización o descartarla definitivamente.
-- Nombre de la inmobiliaria (empresa, no persona): en los fixtures se reemplazó por `[NOMBRE]`.
+- Nombre de la inmobiliaria (empresa, no persona): `detalle_1`, `detalle_2` y `listado` lo
+  reemplazan por `[NOMBRE]`; `detalle_3` y la caché del scraper eliminan el bloque entero (D1).
   Si sirve para deduplicar (F5), se decide en F3.5 si se persiste.
 - Clasipar: si se incluye la categoría `residencias-mansiones`.
 - Relevar otras fuentes.
 - Actualizar los ADR propuestos con estos datos. No se modificaron en F3.1:
-  - ADR-003: qué fuentes exponen lat/lon y con qué precisión (§1.5, §2.5, §6.4), y si hace
-    falta un nivel de precisión "ciudad".
+  - ADR-003: sus niveles de `geo_precision` ya incluyen "ciudad" (2026-10-06, a revisión de
+    Oscar, ADR-006 P1). Sigue pendiente decir qué fuentes exponen lat/lon y con qué precisión
+    (§1.5, §2.5, §6.4).
   - ADR-004: moneda por fuente (§5).
   - ADR-005: ningún `currency=None` en la muestra (§5).
-- Fixtures: el código interno al final de algunas descripciones ("ID: 38434 vf") se dejó tal cual.
-  Podría contener iniciales del agente; si el equipo lo prefiere, se reemplaza.
+- Fixtures: el código interno al final de algunas descripciones ("ID: 38434 vf", "Id: 48617" y, en
+  `detalle_3`, "A:39SQEE/CP:2214004") se dejó tal cual. Podría contener iniciales del agente; si
+  el equipo lo prefiere, se reemplaza.
+
+## 8. Correcciones posteriores a F3.1
+
+### 8.1 Conteos de Clasipar (2026-10-06)
+Además de las 13 páginas de listado filtradas (venta × tipo × ciudad, más la página 2 de casas de
+Asunción), el reconocimiento bajó la página genérica `/inmuebles/casas`, que no filtra por
+operación ni por ciudad y mezcla alquileres: de sus 46 tarjetas, 10 dicen "Doy en alquiler". El
+validador recorre todos los `*.body` de la carpeta, así que las cifras de §2.5, §4 y §5 la
+incluían (los 415 strings de precio eran 366 + 46 + 3 detalles). Se re-corrió solo sobre las 13
+páginas filtradas, con los 3 detalles aparte:
+
+| Dato | Antes | Después |
+|---|---|---|
+| Tarjetas / avisos únicos | "318 únicos" (eran solo los orgánicos) | 366 / 365 (318 orgánicos + 47 patrocinados) |
+| Precios parseados (Clasipar) | 414/415 | 365/366 en las 13 páginas; 3/3 en los detalles |
+| Moneda en tarjetas | 229 USD / 185 PYG (n=414) | 207 USD / 158 PYG (n=365) |
+| Montos bajos para una venta | "17 implausibles" | 13 (criterio en §5) |
+| Superficies | 23 (18 `None`, 3 `construida`, 2 `terreno`) | 22 únicos (17 `None`, 3 `construida`, 2 `terreno`) |
+| Strings de precio de las dos fuentes (ADR-005) | 687/688 | 641/642 |
+
+El "17" original no se puede reproducir: no documentó su criterio y sus ejemplos incluían
+montos de la página genérica (por ejemplo `Gs. 1.500.000`, que es un monto de alquiler). Las
+cifras de InfoCasas no cambian. ADR-006 (Consecuencias) y el ROADMAP (F4.1) citaban las cifras
+anteriores y se actualizaron.
+
+### 8.2 Reintento de robots.txt en la compuerta (2026-10-06)
+El ledger local (`data/raw/recon/ledger.json`) abre con cuatro entradas de `robots.txt`, dos por
+fuente. La primera de cada fuente tiene status `null` y la nota "compuerta, intento 1: respuesta
+no guardada por error de escritura local"; la segunda, status 200 y la nota "compuerta". Lo que se
+puede reconstruir: la compuerta de red pidió el `robots.txt` de cada fuente, según la nota no pudo
+guardar la respuesta por un error local de escritura y lo volvió a pedir una vez. Las cuatro
+entradas tienen el mismo `ts`, así que **el ledger no permite saber cuánto pasó entre el intento y
+el reintento**: pudo ser menos de 2 s (el mínimo de CLAUDE.md) y no se puede afirmar ni descartar.
+El repo no tiene un script de esa compuerta (solo la mencionan `scripts/recon/fetch.py` y un
+comentario de `tests/recon/test_robots.py`), así que no hay código que revisar.
+
+Las otras 37 separaciones entre requests consecutivas del ledger (las dos fuentes, ordenadas por
+`ts`) son de 7,7 s o más. Es decir, "sin reintentos" valió para todo salvo este caso, y el
+cliente `scripts/recon/client.py` nunca reintenta. `BaseScraper` (F3.2) solo reintenta timeouts y
+5xx, y respeta siempre la demora mínima.
+
+### 8.3 Crudo de Clasipar borrado (2026-10-06)
+Los `data/raw/recon/clasipar/*.body` (20 páginas: home, reglas, advertencia legal, 14 de listado y 3
+de detalle) se borraron, igual que con InfoCasas: guardaban las páginas tal como llegaron, con
+110 links `/empresa/<nombre>` y los bloques de anunciante de los 3 detalles. CLAUDE.md no permite
+persistir nombres de agentes y desde esta fecha la caché se escribe sanitizada (D1). Antes de
+borrarlos se verificó que `sanitize_clasipar_html` elimina esos datos en las 17 páginas con
+anuncios: no quedó ningún `/empresa/`, `/corporate/`, `/users/` ni contacto, y de los 47 nombres y
+slugs de anunciantes extraídos del crudo no quedó ninguno (las únicas 9 coincidencias fueron el
+`alt="sin foto"` de una imagen genérica).
+
+Se conservan `ledger.json`, `robots.txt` y los `*.meta.json` (URL, status y headers de cada
+request, sin cuerpo). Consecuencia: `recon.validate_parsers` ya no puede volver a correr sobre el
+crudo local; las cifras de §2.3, §2.5, §4, §5 y §8.1 son el registro: se midieron antes de
+borrarlo (en §2.3, que las 13 páginas traen `rel="next"` y que la página 2 de casas de Asunción
+trae también `rel="prev"`) y ya no se pueden reproducir. Los fixtures de `tests/fixtures/clasipar/`
+y los conteos agregados de las 13 páginas (366 tarjetas, 48 patrocinadas, 365 únicas) quedan como
+referencia. `recon.fetch` sanitiza antes de escribir.
 
 ## Reproducir
 ```powershell
 $env:PYTHONPATH = "scripts"
-uv run --group scraping python -m recon.fetch clasipar <nombre>=<url> ...   # respeta tope y robots
+uv run python -m recon.fetch clasipar <nombre>=<url> ...   # respeta tope y robots
 $env:PYTHONPATH = "src;scripts"
 uv run python -m recon.validate_parsers clasipar [--ver]
 $env:PYTHONPATH = "scripts"
 uv run python -m recon.sanitize clasipar <crudo>=<fixture> ...
 ```
-El crudo y el ledger de requests quedan en `data/raw/recon/` (gitignored). El ledger tiene
-InfoCasas marcada como bloqueada, así que el cliente rechaza cualquier request nueva a esa fuente.
+El ledger de requests queda en `data/raw/recon/` (gitignored). El ledger tiene InfoCasas marcada
+como bloqueada, así que el cliente rechaza cualquier request nueva a esa fuente. Desde §8.3 el
+crudo de Clasipar ya no existe y `recon.fetch` guarda las páginas sanitizadas; el validador solo
+sirve sobre páginas que se vuelvan a pedir. Para scrapear se usa `avm.scraping.base.BaseScraper`.

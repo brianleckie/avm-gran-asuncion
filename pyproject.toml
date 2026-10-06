@@ -5,9 +5,12 @@ description = "Automated Valuation Model del precio de oferta por m² en el Gran
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "Brian Leckie" }, { name = "Oscar Arce" }]
+# httpx (cliente HTTP) y selectolax (parser HTML) son runtime desde F3.2/F3.4: los usa avm.scraping.
 dependencies = [
+    "httpx>=0.28.1",
     "numpy>=2",
     "pydantic>=2",
+    "selectolax>=1.0.0",
 ]
 
 [dependency-groups]
@@ -20,11 +23,6 @@ dev = [
     "pre-commit",
     "hypothesis",
     "coverage",
-]
-# Opcional: solo para scripts/recon (F3.1) y el scraping. No lo instala `uv sync` por defecto ni el CI;
-# se usa con `uv run --group scraping ...`.
-scraping = [
-    "httpx",
 ]
 
 [build-system]

@@ -20,10 +20,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from avm.scraping.config import PRODUCT_TOKEN, USER_AGENT
 from recon.robots import is_allowed, rules_for
 
-USER_AGENT = "AVM-GranAsuncion-Academic/0.1 (proyecto universitario; contacto: https://github.com/brianleckie)"
-PRODUCT_TOKEN = USER_AGENT.split("/", 1)[0]
 MIN_DELAY_S = 6.0
 MAX_REQUESTS_PER_SOURCE = 25
 TIMEOUT_S = 20.0
@@ -75,7 +74,7 @@ def looks_blocked(response: Response) -> str | None:
 
 
 def httpx_sender() -> Sender:
-    """Sender real. httpx se importa acá para que los tests no dependan del grupo `scraping`."""
+    """Sender real. httpx se importa acá para que importar el módulo no cree ningún cliente."""
     import httpx
 
     client = httpx.Client(
