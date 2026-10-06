@@ -17,6 +17,7 @@ from avm.contract.enums import (
     StreetSurface,
     WarningCode,
 )
+from avm.contract.raw_listing import RawListing
 from avm.contract.version import CONTRACT_VERSION
 
 __all__ = [
@@ -30,6 +31,7 @@ __all__ = [
     "OperationType",
     "PropertyType",
     "Provenance",
+    "RawListing",
     "Source",
     "StreetSurface",
     "WarningCode",
