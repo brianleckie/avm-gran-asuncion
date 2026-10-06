@@ -8,6 +8,7 @@ import hashlib
 import json
 import re
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -193,6 +194,46 @@ def test_the_fragmenting_agrees_with_parse_area_on_the_first_surface() -> None:
     assert (checked, mismatched, extra) == (5, 0, 1)
 
 
+def test_structured_tags_add_built_area_only_as_a_measure() -> None:
+    manifest = manifest_for(
+        [
+            ("1", "departamento", "luque", (1,)),
+            ("2", "departamento", "luque", (1,)),
+            ("3", "casa", "luque", (1,)),
+        ]
+    )
+    items = [
+        # solo el tag estructurado trae los m² construidos
+        listing("1", price_raw="US$. 100.000", attributes_raw={"Superficie construida": "68"}),
+        # el texto y el tag los traen y NO coinciden (70 contra 68)
+        listing(
+            "2",
+            price_raw="US$. 100.000",
+            title_raw="70 m2 construidos",
+            attributes_raw={"Superficie construida": "68", "Superficie de terreno m2": "200"},
+        ),
+        # un tag con un valor que no es un número no cuenta
+        listing(
+            "3", price_raw="US$. 100.000", attributes_raw={"Superficie construida": "sin dato"}
+        ),
+    ]
+    rows = report.build_rows(items, manifest)
+    assert [r.tag_built for r in rows] == [Decimal(68), Decimal(68), None]
+    assert rows[1].tag_land == Decimal(200) and rows[0].tag_land is None
+    # El target "oficial" sigue siendo solo texto; el tag es una medida aparte.
+    assert [r.available() for r in rows] == [False, True, False]
+    assert [r.available(with_tag=True) for r in rows] == [True, True, False]
+    text = report.render(manifest, items, request_log(), None, None)
+    both = "| departamento (n=2) | 2/2 (100,0 %) | 1/2 (50,0 %) | 2/2 (100,0 %) | 2/2 (100,0 %) |"
+    assert both in text  # con el tag; solo texto; texto o tag; ídem con la regla de deptos
+    assert (
+        "Avisos con el tag y con m² construidos en el texto: 1; en 1 los valores no coinciden."
+        in text
+    )
+    assert "| departamento (n=2) | 2/2 (100,0 %) | 1/2 (50,0 %) | 2/2 (100,0 %) |" in text
+    assert "| casa (n=1) | 0/1 (0,0 %) | 0/1 (0,0 %) | 0/1 (0,0 %) |" in text
+
+
 def test_the_line_by_line_measure_shows_when_the_next_label_wins() -> None:
     manifest = manifest_for([("1", "casa", "luque", (1,))])
     item = listing("1", description_raw="Terreno: 180 m²\nConstrucción: 90 m²")
@@ -340,7 +381,16 @@ def test_sample_section_counts_origins_and_sponsored() -> None:
 def test_price_section_classifies_every_listing() -> None:
     text = render()
     # 5 avisos: parseables el 1, 3 y 5 (USD, PYG y USD "desde"); "Consultar" el 2; el 4 no parsea
-    assert "| Total (n=5) | 3/5 (60,0 %) | 2 | 1 | 0 | 1 | 1 | 1 |" in text
+    assert "| Total (n=5) | 3/5 (60,0 %) | 2 | 1 | 0 | 1 | 1 | 0 | 1 |" in text
+
+
+def test_a_zero_price_is_its_own_class() -> None:
+    manifest = manifest_for([("1", "casa", "luque", (1,)), ("2", "casa", "luque", (1,))])
+    items = [listing("1", price_raw="Gs. 0"), listing("2", price_raw="Gs. 10")]
+    rows = report.build_rows(items, manifest)
+    assert [report._price_class(r) for r in rows] == ["monto cero", "parseable"]
+    text = report.render(manifest, items, request_log(), None, None)
+    assert "| casa (n=2) | 1/2 (50,0 %) | 0 | 1 | 0 | 0 | 0 | 1 | 0 |" in text
 
 
 def test_area_section_by_type() -> None:
@@ -355,6 +405,8 @@ def test_area_section_by_type() -> None:
     assert deptos in text
     # patrones de los kind=None (el 2: "Casa 200 m2" -> "casa N m2"; el 3: "departamento de N m2")
     assert "| 1 | `casa N m2` | 1 |" in text and "| 2 | `departamento de N m2` | 1 |" in text
+    # y solo la expresión, sin contexto: las dos son "N m2"
+    assert "| 1 | `N m2` | 2 |" in text
     # dos superficies distintas: solo el 1 (construida + terreno)
     assert "**Avisos con dos o más superficies distintas:** 1/5 (20,0 %)" in text
     assert "| construida + terreno | 1 |" in text

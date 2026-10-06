@@ -34,6 +34,7 @@ from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -90,6 +91,7 @@ PRIVACY_PATTERNS = {
     "consultar con": re.compile(r"consultar\s+con", re.I),
     "hablar con": re.compile(r"hablar\s+con", re.I),
 }
+LOCATIONS = ("ficha (`.anuncio-detalles`)", "tags (`span.ads_tag`)", "JSON-LD")
 PLACEHOLDERS = ("[TELEFONO]", "[EMAIL]", "[WHATSAPP]", "[URL]")
 
 # --------------------------------------------------------------------------------- superficie
@@ -115,9 +117,11 @@ class Found:
     area: ParsedArea
     where: str  # "titulo" o "descripcion"
     pattern: str  # patrón de formato (números -> N, contexto filtrado)
+    expression: str  # solo la expresión, sin contexto ("N m2", "N x N mts")
 
 
-def _pattern(fragment: str, start: int, end: int) -> str:
+def _pattern(fragment: str, start: int, end: int) -> tuple[str, str]:
+    """(patrón con contexto, expresión sola) de la expresión `fragment[start:end]`."""
     expression = " ".join(_NUMBER.sub("N", fragment[start:end].casefold()).split())
     before = _WORD.findall(re.split(r"[0-9]", fragment[:start])[-1])[-2:]
     after = _WORD.findall(re.split(r"[0-9]", fragment[end:], maxsplit=1)[0])[:2]
@@ -125,7 +129,7 @@ def _pattern(fragment: str, start: int, end: int) -> str:
     def keep(word: str) -> str:
         return word.casefold() if word.casefold() in VOCABULARY else "W"
 
-    return " ".join([*map(keep, before), expression, *map(keep, after)])
+    return " ".join([*map(keep, before), expression, *map(keep, after)]), expression
 
 
 def find_areas(text: str, where: str) -> list[Found]:
@@ -143,7 +147,8 @@ def find_areas(text: str, where: str) -> list[Found]:
         fragment = text[low:high]
         area = parse_area(fragment)
         if area is not None:
-            found.append(Found(area, where, _pattern(fragment, start - low, end - low)))
+            pattern, expression = _pattern(fragment, start - low, end - low)
+            found.append(Found(area, where, pattern, expression))
     return found
 
 
@@ -159,6 +164,8 @@ class Row:
     price: ParsedPrice | None
     areas: tuple[Found, ...]  # `parse_area` sobre el título y sobre la descripción completos
     line_areas: tuple[Found, ...]  # lo mismo, línea por línea (solo para medir una idea de F4.3)
+    tag_built: Decimal | None = None  # tag estructurado "Superficie construida" (attributes_raw)
+    tag_land: Decimal | None = None  # tag estructurado "Superficie de terreno m2"
 
     @property
     def sponsored(self) -> bool:
@@ -184,12 +191,26 @@ class Row:
     def has_unkinded(self) -> bool:
         return any(found.area.kind is None for found in self.areas)
 
-    def available(self, *, unkinded_as_built: bool = False) -> bool:
-        """Precio parseable + moneda conocida + m² construidos identificados."""
-        built = bool(self.built_values)
+    def available(self, *, unkinded_as_built: bool = False, with_tag: bool = False) -> bool:
+        """Precio parseable + moneda conocida + m² construidos identificados.
+
+        Por defecto los m² construidos salen del texto (título y descripción). `with_tag` suma el
+        tag estructurado y `unkinded_as_built` la regla alternativa de los departamentos: las dos
+        son solo medidas.
+        """
+        built = bool(self.built_values) or (with_tag and self.tag_built is not None)
         if unkinded_as_built and self.ptype == "departamento" and not built:
             built = self.has_unkinded
         return self.price_ok and built
+
+
+def tag_area(attributes: dict[str, str], wanted: str) -> Decimal | None:
+    """Superficie de un tag estructurado ("Superficie construida", "Superficie de terreno m2")."""
+    for key, value in attributes.items():
+        if "superficie" in key.casefold() and wanted in key.casefold():
+            area = parse_area(value) or parse_area(f"{value} m2")  # el tag trae el número solo
+            return area.m2 if area is not None else None
+    return None
 
 
 def build_rows(listings: Sequence[RawListing], manifest: dict[str, Any]) -> list[Row]:
@@ -209,7 +230,20 @@ def build_rows(listings: Sequence[RawListing], manifest: dict[str, Any]) -> list
         by_line = [f for line in description.splitlines() for f in find_areas(line, "descripcion")]
         areas = (*title, *find_areas(description, "descripcion"))
         price = parse_price(listing.price_raw) if listing.price_raw else None
-        rows.append(Row(listing, ptype, city, pages, price, areas, (*title, *by_line)))
+        attributes = listing.attributes_raw
+        rows.append(
+            Row(
+                listing,
+                ptype,
+                city,
+                pages,
+                price,
+                areas,
+                (*title, *by_line),
+                tag_area(attributes, "constru"),
+                tag_area(attributes, "terreno"),
+            )
+        )
     return rows
 
 
@@ -429,7 +463,10 @@ def _price_class(row: Row) -> str:
     if not row.listing.price_raw:
         return "sin precio"
     if row.price is None:
-        return "consultar" if "consult" in row.listing.price_raw.casefold() else "no parseable"
+        text = row.listing.price_raw
+        if "consult" in text.casefold():
+            return "consultar"
+        return "monto cero" if "0" in text and not re.search(r"[1-9]", text) else "no parseable"
     return "parseable"
 
 
@@ -448,6 +485,7 @@ def section_price(rows: Sequence[Row]) -> list[str]:
                 sum(p.currency is None for p in parsed),
                 sum(p.is_from_price for p in parsed),
                 classes["consultar"],
+                classes["monto cero"],
                 classes["no parseable"] + classes["sin precio"],
             ]
         )
@@ -465,6 +503,7 @@ def section_price(rows: Sequence[Row]) -> list[str]:
                 "Sin moneda (`currency=None`)",
                 '"Desde" o rango (`is_from_price`)',
                 '"Consultar"',
+                "Monto cero",
                 "Otros no parseables",
             ],
             data,
@@ -516,7 +555,8 @@ def section_area(rows: Sequence[Row]) -> list[str]:
         "`parse_area` sobre `title_raw` y `description_raw`. Como `parse_area` devuelve una sola "
         "expresión por texto, cada texto se parte en fragmentos (uno por expresión candidata) y se "
         "corre `parse_area` en cada uno, para ver también la segunda superficie de un aviso. "
-        "Ningún campo estructurado trae la superficie (ver punto 7).",
+        "La superficie también puede venir como tag estructurado: ver el punto 7 y, para su "
+        "efecto sobre el target, el punto 6.",
         "",
     ]
     groups = [*by_type(rows), ("Total", list(rows))]
@@ -597,6 +637,16 @@ def section_area(rows: Sequence[Row]) -> list[str]:
             [[i, f"`{pattern}`", n] for i, (pattern, n) in enumerate(patterns.most_common(10), 1)],
         ),
     ]
+    expressions = Counter(f.expression for r in rows for f in r.areas if f.area.kind is None)
+    lines += [
+        "**Solo la expresión, sin contexto** (las mismas superficies `kind=None`; sirve para ver "
+        "qué unidades y formatos tiene que entender F4.3):",
+        "",
+        *table(
+            ["#", "Expresión", "Superficies"],
+            [[i, f"`{e}`", n] for i, (e, n) in enumerate(expressions.most_common(10), 1)],
+        ),
+    ]
     two = [r for r in rows if len(_distinct_areas(r)) >= 2]
     combos = Counter(" + ".join(sorted(str(kind) for _, kind in _distinct_areas(r))) for r in two)
     lines += [
@@ -623,7 +673,7 @@ def _group_stats(group: Sequence[Row], *, alt: bool) -> list[object]:
 
 
 def projection(
-    manifest: dict[str, Any], rows: Sequence[Row]
+    manifest: dict[str, Any], rows: Sequence[Row], *, with_tag: bool = False
 ) -> tuple[list[list[object]], float, float, float, int]:
     """Filas por target, Σ total_results, estimación, desvío estándar y targets sin datos."""
     data: list[list[object]] = []
@@ -646,7 +696,7 @@ def projection(
                 ]
             )
             continue
-        hits = sum(r.available() for r in mine)
+        hits = sum(r.available(with_tag=with_tag) for r in mine)
         rate = hits / len(mine)
         total += population
         estimate += population * rate
@@ -665,6 +715,43 @@ def projection(
     return data, total, estimate, math.sqrt(variance), skipped
 
 
+def _tag_stats(group: Sequence[Row]) -> list[object]:
+    size = len(group)
+    return [
+        frac(sum(r.tag_built is not None for r in group), size),
+        frac(sum(r.available() for r in group), size),
+        frac(sum(r.available(with_tag=True) for r in group), size),
+        frac(sum(r.available(with_tag=True, unkinded_as_built=True) for r in group), size),
+    ]
+
+
+def tag_vs_text(rows: Sequence[Row]) -> tuple[int, int]:
+    """(avisos con el tag y m² construidos en el texto, de esos, con valores que no coinciden)."""
+    both = [r for r in rows if r.tag_built is not None and r.built_values]
+    return len(both), sum(r.tag_built not in r.built_values for r in both)
+
+
+def section_tag_target(rows: Sequence[Row]) -> list[str]:
+    """Efecto del tag estructurado "Superficie construida" sobre el target (solo medida)."""
+    header = [
+        "Con el tag",
+        "Target (solo texto)",
+        "Target (texto o tag)",
+        "Target (texto o tag, y `kind=None` en deptos)",
+    ]
+    data = [[f"{label} (n={len(group)})", *_tag_stats(group)] for label, group in by_type(rows)]
+    data.append([f"Total (n={len(rows)})", *_tag_stats(rows)])
+    cities = [[f"{label} (n={len(group)})", *_tag_stats(group)] for label, group in by_city(rows)]
+    return [
+        '**Tag estructurado "Superficie construida" como fuente adicional de m² construidos** '
+        "(solo medida: el parser hoy lo deja en `attributes_raw`, no en `built_area_raw`). Es un "
+        "campo que carga el anunciante, con el número solo (punto 7).",
+        "",
+        *table(["Tipo", *header], data),
+        *table(["Ciudad", *header], cities),
+    ]
+
+
 def section_target(manifest: dict[str, Any], rows: Sequence[Row]) -> list[str]:
     lines = [
         "## 6. Target disponible",
@@ -672,7 +759,8 @@ def section_target(manifest: dict[str, Any], rows: Sequence[Row]) -> list[str]:
         "Target disponible = precio parseable + moneda conocida + m² construidos identificados "
         "(al menos una superficie de tipo `construida` en el título o la descripción). La regla "
         "alternativa **solo se mide, no se adopta**: para departamentos, aceptar también una "
-        "superficie `kind=None` como construida.",
+        "superficie `kind=None` como construida. Más abajo se mide aparte el tag estructurado "
+        '"Superficie construida" que apareció en el punto 7.',
         "",
     ]
     header = ["", "Precio + moneda", "m² construidos", "Target disponible"]
@@ -720,10 +808,14 @@ def section_target(manifest: dict[str, Any], rows: Sequence[Row]) -> list[str]:
         *table(["Tipo", "Ciudad", "n", "Target disponible"], data),
     ]
 
+    lines += section_tag_target(rows)
     available = [r for r in rows if r.available()]
     conflicts = sum(len(r.built_values) > 1 for r in rows)
     from_price = sum(bool(r.price and r.price.is_from_price) for r in available)
+    with_both, differ = tag_vs_text(rows)
     lines += [
+        f"- Avisos con el tag y con m² construidos en el texto: {with_both}; en {differ} los "
+        "valores no coinciden.",
         f"- Avisos con más de un valor distinto de m² construidos (cuentan como identificados): "
         f"{conflicts}.",
         f'- De los {len(available)} con target disponible, {from_price} tienen precio "desde" o '
@@ -755,6 +847,13 @@ def section_target(manifest: dict[str, Any], rows: Sequence[Row]) -> list[str]:
         "- **Qué no captura el intervalo:** `total_results` no está deduplicado, no está filtrado "
         "por alcance (incluye terrenos y locales dentro de las categorías; docs/sources.md §2.3) y "
         "la muestra sobrerrepresenta la página 1. Es un orden de magnitud, no una cifra.",
+    ]
+    _, _, with_tag, tag_deviation, _ = projection(manifest, rows, with_tag=True)
+    lines += [
+        "- Con el tag estructurado como fuente adicional de m² construidos (solo medida): "
+        f"**{with_tag:.0f}** (intervalo aproximado del 95 %: "
+        f"{max(0.0, with_tag - 1.96 * tag_deviation):.0f} a "
+        f"{with_tag + 1.96 * tag_deviation:.0f}).",
     ]
     random_rows = [r for r in rows if r.origin == "aleatoria"]
     population_by_type: dict[str, int] = {}
@@ -809,9 +908,9 @@ def structured_area_hits(
         scanned += 1
         tree = LexborHTMLParser(path.read_text(encoding="utf-8"))
         found: dict[str, set[str]] = {
-            "ficha (`.anuncio-detalles`)": {k for k in _ficha(tree) if AREA_LABEL.search(k)},
-            "tags (`span.ads_tag`)": {k for k in _tags(tree) if AREA_LABEL.search(k)},
-            "JSON-LD": {k for ld in _json_ld(tree) for k in ld if AREA_LABEL.search(k)},
+            LOCATIONS[0]: {k for k in _ficha(tree) if AREA_LABEL.search(k)},
+            LOCATIONS[1]: {k for k in _tags(tree) if AREA_LABEL.search(k)},
+            LOCATIONS[2]: {k for ld in _json_ld(tree) for k in ld if AREA_LABEL.search(k)},
         }
         for place, names in found.items():
             if names:
@@ -824,6 +923,27 @@ def structured_area_hits(
 def section_structured(rows: Sequence[Row], html_dir: Path | None) -> list[str]:
     scanned, pages, labels = structured_area_hits(rows, html_dir)
     lines = ["## 7. Pista X3: ¿la superficie viene como campo estructurado?", ""]
+    groups = [*by_type(rows), ("Total", list(rows))]
+    lines += [
+        "Según `attributes_raw` (los `span.ads_tag` que guarda el parser), por tipo de inmueble. "
+        "El valor es el número solo, sin unidad; acá solo se cuenta su presencia:",
+        "",
+        *table(
+            ["Tipo", 'Con "Superficie construida"', 'Con "Superficie de terreno m2"', "Con alguna"],
+            [
+                [
+                    f"{label} (n={len(group)})",
+                    frac(sum(r.tag_built is not None for r in group), len(group)),
+                    frac(sum(r.tag_land is not None for r in group), len(group)),
+                    frac(
+                        sum(r.tag_built is not None or r.tag_land is not None for r in group),
+                        len(group),
+                    ),
+                ]
+                for label, group in groups
+            ],
+        ),
+    ]
     if scanned == 0:
         return [*lines, "No se pudo revisar: la caché de HTML sanitizada no está disponible.", ""]
     lines += [
@@ -841,7 +961,7 @@ def section_structured(rows: Sequence[Row], html_dir: Path | None) -> list[str]:
         return lines
     lines += table(
         ["Ubicación", "Detalles con alguna etiqueta"],
-        [[place, frac(count, scanned)] for place, count in pages.most_common()],
+        [[place, frac(pages[place], scanned)] for place in LOCATIONS],
     )
     lines += table(["Etiqueta", "Detalles"], labels.most_common(20))
     return lines
