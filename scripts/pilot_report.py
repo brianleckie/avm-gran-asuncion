@@ -296,12 +296,14 @@ def _normalize(text: str) -> str:
 def section_execution(manifest: dict[str, Any], requests: Sequence[dict[str, Any]]) -> list[str]:
     lines = ["## 1. Ejecución", ""]
     results = Counter(entry["result"] for entry in requests)
+    sent = len(requests) - results["cache"] - results["robots"]
     statuses = Counter(entry["status"] for entry in requests if entry["status"] is not None)
     details = manifest["details"]
     lines += [
-        f"- Requests enviadas por `BaseScraper` (robots.txt incluido): {len(requests)} de un "
-        f"presupuesto de {manifest['budget']} (el log suma las de caché y las prohibidas por "
-        f"robots; la corrida usó {manifest['requests']['used']}).",
+        f"- Requests enviadas por `BaseScraper` (robots.txt y reintentos incluidos): {sent} de un "
+        f"presupuesto de {manifest['budget']}; el log registra además {results['cache']} "
+        f"respuestas de caché y {results['robots']} pedidos prohibidos por robots.txt, que no "
+        "se enviaron.",
         "- Por resultado: " + ", ".join(f"{k} {v}" for k, v in sorted(results.items())) + ".",
         "- Por status HTTP: " + ", ".join(f"{k} {v}" for k, v in sorted(statuses.items())) + ".",
     ]
@@ -760,7 +762,9 @@ def section_target(manifest: dict[str, Any], rows: Sequence[Row]) -> list[str]:
         "(al menos una superficie de tipo `construida` en el título o la descripción). La regla "
         "alternativa **solo se mide, no se adopta**: para departamentos, aceptar también una "
         "superficie `kind=None` como construida. Más abajo se mide aparte el tag estructurado "
-        '"Superficie construida" que apareció en el punto 7.',
+        '"Superficie construida" que apareció en el punto 7. **No se verificó a mano que los m² '
+        "clasificados como `construida` lo sean:** `parse_area` puede confundir etiquetas "
+        "contiguas (punto 5) y hay avisos con más de un valor `construida`.",
         "",
     ]
     header = ["", "Precio + moneda", "m² construidos", "Target disponible"]

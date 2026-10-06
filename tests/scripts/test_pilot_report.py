@@ -348,6 +348,9 @@ def test_the_report_has_the_eleven_sections_in_order() -> None:
 def test_execution_section_numbers() -> None:
     text = render()
     assert "Duración total: 30,0 min" in text
+    # El log tiene 5 líneas pero solo 4 se enviaron: la quinta es una respuesta de caché.
+    assert "(robots.txt y reintentos incluidos): 4 de un presupuesto de 260;" in text
+    assert "además 1 respuestas de caché y 0 pedidos prohibidos por robots.txt" in text
     assert "Por resultado: cache 1, error 1, ok 3." in text
     assert "Por status HTTP: 200 3, 404 1." in text
     # latencias de los requests enviados: listados 1,0; detalles 0,25 y 0,75; robots 0,5
