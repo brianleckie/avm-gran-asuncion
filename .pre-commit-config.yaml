@@ -2,8 +2,11 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # Los fixtures HTML se guardan tal como vinieron (salvo la sanitización): no se tocan.
       - id: trailing-whitespace
+        exclude: ^tests/fixtures/
       - id: end-of-file-fixer
+        exclude: ^tests/fixtures/
       # Tope de 500 KB: evita subir HTML crudo o datasets por accidente.
       - id: check-added-large-files
         args: [--maxkb=500]

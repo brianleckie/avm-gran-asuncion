@@ -42,7 +42,8 @@
 - [ ] F2.5 (O) Seed fijo y "ground truth" guardado, para verificar que el pipeline recupera los efectos conocidos
 
 ## F3 — Scraping
-- [ ] F3.1 (B) Reconocimiento por fuente (InfoCasas, Clasipar, otras): robots.txt, ToS, paginación, si existe JSON embebido (`__NEXT_DATA__`, JSON-LD) o API interna. Documentar en `docs/sources.md`
+- [x] F3.1 (B) Reconocimiento por fuente (InfoCasas, Clasipar, otras): robots.txt, ToS, paginación, si existe JSON embebido (`__NEXT_DATA__`, JSON-LD) o API interna. Documentar en `docs/sources.md`
+  → los ToS de InfoCasas (cláusula XVII) prohíben bots y scrapers: se frenó tras 19 requests, sin fixtures, y queda descartada salvo permiso escrito. Se prioriza Clasipar (ToS sin cláusula anti-bot, pero prohíben reproducir contenido: no publicar el crudo). "Otras" fuentes no se relevaron. Cliente de reconocimiento en `scripts/recon/` (6 s entre requests, tope de 25 por fuente)
 - [ ] F3.2 (B) `BaseScraper`: httpx, rate limit de 1 req cada 2-3 s, retries con backoff, user-agent identificable, caché de HTML crudo en disco
 - [ ] F3.3 (B) Crawler de listados → URLs de avisos, filtrados por venta, tipo y ciudad
 - [ ] F3.4 (B) Parser por fuente → `RawListing`. **Tests con fixtures HTML guardados**, porque los selectores se rompen
@@ -54,10 +55,12 @@
 ## F4 — Limpieza y normalización
 - [ ] F4.1 (B) Parseo de precios: "USD 150.000", "U$S 150 mil", "Gs. 1.200.000.000", "consultar" → null
   → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
+  → F3.1: 687/688 strings reales parseados (el que falta es "Consultar precio."), ninguno con `currency=None`. 17 montos implausibles para una venta en Clasipar quedan para F4.6 (ver `docs/sources.md` §5)
 - [ ] F4.2 (B) Conversión a USD con cotización BCP de la fecha de scrape, guardando moneda y monto originales
   → decisión pendiente: qué hacer con `currency=None` (precio sin moneda explícita). `parse_price` no la adivina por magnitud; inferirla o descartar el aviso se resuelve acá, en el pipeline
 - [ ] F4.3 (B) m²: resolver construidos vs terreno, detectar intercambios y unidades erróneas
   → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
+  → F3.1: el número sale bien en todos los strings reales, pero en Clasipar la superficie solo aparece en texto libre y `kind` suele quedar en None; hay un caso dudoso ("940M2 C/ CONSTRUCCION") y "desde N m2" no se marca (ver `docs/sources.md` §5)
 - [ ] F4.4 (B) Normalización de barrios: gazetteer, alias ("V. Morra", "Villa Morra") y fuzzy matching (rapidfuzz). Lo que no matchea va a revisión manual, no se asigna en silencio
 - [ ] F4.5 (B) Extracción de features desde la descripción (regex primero): piscina, quincho, a estrenar, condominio/barrio cerrado, **pavimento/empedrado/tierra**, ascensor, amenities
 - [ ] F4.6 (B) Reglas de outliers: USD/m² fuera de rango plausible por ciudad, errores de tipeo, alquileres colados
