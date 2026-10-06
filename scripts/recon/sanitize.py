@@ -5,7 +5,8 @@ Uso (desde la raíz del repo):
     uv run python -m recon.sanitize clasipar <crudo>=<fixture> [<crudo>=<fixture> ...]
 
 Reemplazos: teléfonos -> [TELEFONO], emails -> [EMAIL], links de WhatsApp -> [WHATSAPP], nombres
-de anunciantes (personas o inmobiliarias) -> [NOMBRE] y su slug de /empresa/ -> [EMPRESA]. Las
+de anunciantes (personas o inmobiliarias) -> [NOMBRE], su slug de /empresa/ -> [EMPRESA] y sus
+logos y fotos de perfil -> [LOGO] / [FOTO_PERFIL]. Las
 reglas de nombres dependen de la estructura observada en cada fuente, así que el resultado se
 revisa a mano: el test tests/scraping/test_fixtures_pii.py cubre teléfonos y emails, no nombres.
 
@@ -24,8 +25,12 @@ RECON_DIR = Path("data/raw/recon")
 FIXTURES_DIR = Path("tests/fixtures")
 MAX_FIXTURE_BYTES = 450_000
 
-# Mismo patrón que el test de PII: 09xx xxx xxx, +595 9xx..., 595 9xx...
-PHONE = re.compile(r"(?:\+?595|\b0)[\s.-]?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}")
+# Mismo patrón que el test de PII. Celulares (09xx xxx xxx, +595 9xx...) y fijos (021 xxx xxx,
+# (595 21) xxx xxxx). El lookbehind evita confundir los grupos de un precio ("1.200.000.000").
+PHONE = re.compile(
+    r"(?<![\w.,/-])(?:\+?595|0)[\s.-]?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}"
+    r"|(?<![\w.,/-])(?:\(?\+?595[\s.-]?|\(?0)[2-8]\d\)?[\s.-]?\d{3}[\s.-]?\d{3,4}"
+)
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 WHATSAPP = re.compile(r"(?:https?:)?//(?:wa\.me|api\.whatsapp\.com)/[^\s\"'<]*", re.I)
 
@@ -70,6 +75,8 @@ def scrub_clasipar_names(page: str) -> str:
         page,
         flags=re.S,
     )
+    # Logos de inmobiliarias: la imagen identifica al anunciante aunque se borre el nombre.
+    page = re.sub(r'src="[^"]*/corporate/[^"]*"', 'src="[LOGO]"', page)
     header = re.compile(r'(<div class="infoAnunciante__header">)(.*?)(</h5>)', re.S)
 
     def _header(m: re.Match[str]) -> str:

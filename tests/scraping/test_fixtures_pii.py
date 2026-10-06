@@ -12,7 +12,11 @@ import pytest
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 
 PII_PATTERNS = {
-    "teléfono PY": re.compile(r"(?:\+?595|\b0)[\s.-]?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}"),
+    # Celulares y fijos; el lookbehind evita confundir los grupos de un precio.
+    "teléfono PY": re.compile(
+        r"(?<![\w.,/-])(?:\+?595|0)[\s.-]?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}"
+        r"|(?<![\w.,/-])(?:\(?\+?595[\s.-]?|\(?0)[2-8]\d\)?[\s.-]?\d{3}[\s.-]?\d{3,4}"
+    ),
     "email": re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
     "WhatsApp": re.compile(r"wa\.me/|api\.whatsapp\.com", re.I),
 }
@@ -40,6 +44,8 @@ def test_fixture_has_no_personal_data(path: Path) -> None:
         "Tel: 0981-123-456",
         "WhatsApp +595 981 123456",
         "595981123456",
+        "Oficina: 021 414 1690",
+        "Tel. (595 21) 414 1690",
         "contacto: vendedor@ejemplo.com.py",
         "https://wa.me/595981123456",
     ],
@@ -50,7 +56,15 @@ def test_detector_catches_synthetic_pii(text: str) -> None:
 
 @pytest.mark.parametrize(
     "text",
-    ["Gs. 1.200.000.000", "US$. 235.000,00", "Nro. de Anuncio: 2919242", "[TELEFONO] [EMAIL]"],
+    [
+        "Gs. 1.200.000.000",
+        "Gs. 1.050.000.000",
+        "US$. 235.000,00",
+        "Nro. de Anuncio: 2919242",
+        "/inmuebles/casas/en-venta-casa-en-recoleta-v021-2095375",
+        '"latitude": "-25.314827172122374"',
+        "[TELEFONO] [EMAIL]",
+    ],
 )
 def test_detector_ignores_prices_and_placeholders(text: str) -> None:
     assert not find_pii(text)
