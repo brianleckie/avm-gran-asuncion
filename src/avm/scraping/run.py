@@ -7,7 +7,9 @@ Los cuatro parámetros son OBLIGATORIOS y no tienen default: el presupuesto de r
 tienen que ser una decisión explícita en cada corrida. Correr desde la raíz del repo: escribe en
 `data/raw/<fecha>/<fuente>/` (caché sanitizada, `requests.jsonl`, `manifest.json`) y en
 `data/interim/<fecha>/<fuente>/` (`raw_listings.jsonl`, `crawl_manifest.json`). `<fecha>` es la del
-día en que arranca la corrida (la fecha del snapshot, ADR-006 punto 12).
+día en que arranca la corrida (la fecha del snapshot, ADR-006 punto 12). Si ya existe el
+`raw_listings.jsonl` de hoy, aborta ANTES de crear el scraper: no pisa ni el archivo ni el
+manifest de la corrida anterior.
 
 Código de salida: 0 corrida completa (también si se agotó el presupuesto: queda dicho en el log y
 en el manifest); 2 error de argumentos (argparse); 3 BLOQUEO de la fuente (se cortó todo, sin
@@ -25,7 +27,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from avm.scraping.base import DEFAULT_ROOT, BaseScraper
-from avm.scraping.crawl import SourceSpec, crawl, utc_now
+from avm.scraping.crawl import LISTINGS_NAME, SourceSpec, crawl, utc_now
 from avm.scraping.sources import clasipar
 
 DEFAULT_INTERIM: Final = Path("data/interim")
@@ -98,6 +100,11 @@ def main(
     spec = SOURCES[args.source]
     snapshot_date = today()
     out_dir = interim_root / snapshot_date.isoformat() / spec.name
+    # Antes de crear el BaseScraper: su close() reescribe el manifest de la corrida anterior.
+    if (out_dir / LISTINGS_NAME).exists():
+        raise FileExistsError(
+            f"ya existe {out_dir / LISTINGS_NAME}: no se pisa la corrida anterior de hoy"
+        )
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter("%(asctime)s %(message)s", datefmt="%H:%M:%S"))

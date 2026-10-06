@@ -156,8 +156,14 @@ def test_an_existing_output_file_aborts_the_run_before_any_request(tmp_path: Pat
     out_dir = tmp_path / "interim" / "2026-10-06" / "clasipar"
     out_dir.mkdir(parents=True)
     (out_dir / "raw_listings.jsonl").write_text("previo\n", encoding="utf-8")
+    # El registro de la corrida anterior (el manifest de BaseScraper) tampoco se toca.
+    raw = tmp_path / "raw" / "2026-10-06" / "clasipar"
+    raw.mkdir(parents=True)
+    (raw / "manifest.json").write_text('{"requests_used": 253}\n', encoding="utf-8")
     site = FakeSite()
-    with pytest.raises(FileExistsError):
+    with pytest.raises(FileExistsError, match="raw_listings.jsonl"):
         invoke(tmp_path, site)
     assert site.paths == []
+    assert (raw / "manifest.json").read_text("utf-8") == '{"requests_used": 253}\n'
+    assert sorted(path.name for path in raw.iterdir()) == ["manifest.json"]
     assert logging.getLogger("avm.scraping").handlers == []  # tampoco deja el handler puesto
