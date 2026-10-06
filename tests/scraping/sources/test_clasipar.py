@@ -1,4 +1,4 @@
-"""Parser de Clasipar contra fixtures reales (F3.4).
+"""Parser de Clasipar contra fixtures reales (F3.4) y URLs de búsqueda (F3.3).
 
 Los valores esperados están escritos A MANO leyendo el HTML de cada fixture; ninguno sale de
 correr el parser. Cada bloque dice de qué parte del fixture sale. Los casos sintéticos (HTML en
@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from avm.contract import RawListing, Source
+from avm.contract import City, PropertyType, RawListing, Source
 from avm.contract.pii import find_pii
 from avm.scraping.sources.clasipar import (
     ClasiparParseError,
@@ -22,9 +22,11 @@ from avm.scraping.sources.clasipar import (
     ListingRef,
     compute_content_hash,
     merge_refs,
+    page_url,
     parse_detail,
     parse_listing_page,
     sanitize_clasipar_html,
+    search_urls,
 )
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "clasipar"
@@ -730,3 +732,46 @@ def test_a_non_utc_timestamp_is_rejected_by_the_contract() -> None:
     local = datetime(2026, 10, 6, 9, 0, tzinfo=timezone(timedelta(hours=-3)))
     with pytest.raises(ValidationError):
         parse_detail(synthetic(), SYNTHETIC_URL, local)
+
+
+# ================================================================================== búsqueda
+
+EXPECTED_SEARCH_URLS = [
+    # Los 12 patrones de docs/sources.md §2.3, escritos a mano.
+    f"{PORTAL}/inmuebles/casas/intencion:vendo-t_s/localidad:asuncion-3",
+    f"{PORTAL}/inmuebles/casas/intencion:vendo-t_s/localidad:luque-30",
+    f"{PORTAL}/inmuebles/casas/intencion:vendo-t_s/localidad:san-lorenzo-35",
+    f"{PORTAL}/inmuebles/casas/intencion:vendo-t_s/localidad:fernando-de-la-mora-23",
+    f"{PORTAL}/inmuebles/departamentos/intencion:vendo-t_s/localidad:asuncion-3",
+    f"{PORTAL}/inmuebles/departamentos/intencion:vendo-t_s/localidad:luque-30",
+    f"{PORTAL}/inmuebles/departamentos/intencion:vendo-t_s/localidad:san-lorenzo-35",
+    f"{PORTAL}/inmuebles/departamentos/intencion:vendo-t_s/localidad:fernando-de-la-mora-23",
+    f"{PORTAL}/inmuebles/duplex/intencion:vendo-t_s/localidad:asuncion-3",
+    f"{PORTAL}/inmuebles/duplex/intencion:vendo-t_s/localidad:luque-30",
+    f"{PORTAL}/inmuebles/duplex/intencion:vendo-t_s/localidad:san-lorenzo-35",
+    f"{PORTAL}/inmuebles/duplex/intencion:vendo-t_s/localidad:fernando-de-la-mora-23",
+]
+
+
+def test_search_urls_are_the_twelve_documented_ones() -> None:
+    targets = search_urls()
+    assert [target.url for target in targets] == EXPECTED_SEARCH_URLS
+    assert len({target.url for target in targets}) == 12
+    assert "residencias-mansiones" not in " ".join(target.url for target in targets)
+
+
+def test_search_urls_cover_every_type_and_city_once() -> None:
+    pairs = {(target.property_type, target.city) for target in search_urls()}
+    assert pairs == {(kind, city) for kind in PropertyType for city in City}
+    assert (
+        search_urls()[0].property_type is PropertyType.HOUSE
+        and search_urls()[0].city is City.ASUNCION
+    )
+
+
+def test_page_url() -> None:
+    base = EXPECTED_SEARCH_URLS[0]
+    assert page_url(base, 1) == base
+    assert page_url(base, 2) == f"{base}/page-2"  # el patrón que sigue rel="next" en el fixture
+    with pytest.raises(ValueError, match="al menos 1"):
+        page_url(base, 0)

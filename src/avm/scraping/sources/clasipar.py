@@ -1,4 +1,4 @@
-"""Clasipar (clasipar.paraguay.com): sanitizador y parser offline (F3.4).
+"""Clasipar (clasipar.paraguay.com): sanitizador, parser offline y URLs de búsqueda (F3.4, F3.3).
 
 Todo lo específico de la fuente vive acá. Los selectores salen de docs/sources.md (§2.3 a §2.7) y
 están documentados en la sección "Selectores implementados (F3.4)" del mismo archivo. El parser
@@ -32,7 +32,7 @@ from urllib.parse import urljoin, urlsplit
 
 from selectolax.lexbor import LexborHTMLParser, LexborNode
 
-from avm.contract import RawListing, Source
+from avm.contract import City, PropertyType, RawListing, Source
 from avm.scraping.sanitize import sanitize_html, scrub_contacts, scrub_urls
 
 HOST: Final = "clasipar.paraguay.com"
@@ -367,3 +367,50 @@ def parse_detail(
         "attributes_raw": attributes,
     }
     return RawListing(**content, scraped_at=scraped_at, content_hash=_canonical_hash(content))
+
+
+# ---------------------------------------------------------------------------------- búsqueda
+
+_CATEGORY_SLUG: Final = {
+    PropertyType.HOUSE: "casas",
+    PropertyType.APARTMENT: "departamentos",
+    PropertyType.DUPLEX: "duplex",
+}
+_LOCALITY_SLUG: Final = {
+    City.ASUNCION: "asuncion-3",
+    City.LUQUE: "luque-30",
+    City.SAN_LORENZO: "san-lorenzo-35",
+    City.FERNANDO_DE_LA_MORA: "fernando-de-la-mora-23",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class SearchTarget:
+    """Una búsqueda de venta: tipo de inmueble × ciudad."""
+
+    property_type: PropertyType
+    city: City
+    url: str
+
+
+def search_urls() -> tuple[SearchTarget, ...]:
+    """Las 12 búsquedas de venta (3 tipos × 4 ciudades) de docs/sources.md §2.3.
+
+    No incluye `residencias-mansiones` (categoría no relevada).
+    """
+    return tuple(
+        SearchTarget(
+            property_type=property_type,
+            city=city,
+            url=f"{BASE_URL}/inmuebles/{category}/intencion:vendo-t_s/localidad:{locality}",
+        )
+        for property_type, category in _CATEGORY_SLUG.items()
+        for city, locality in _LOCALITY_SLUG.items()
+    )
+
+
+def page_url(search_url: str, page: int) -> str:
+    """URL de la página `page` de una búsqueda: la primera no lleva sufijo, las demás `/page-N`."""
+    if page < 1:
+        raise ValueError("la página tiene que ser al menos 1")
+    return search_url if page == 1 else f"{search_url}/page-{page}"
