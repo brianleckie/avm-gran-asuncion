@@ -65,13 +65,15 @@ def test_invalid_values_are_rejected(field: str, value: object) -> None:
         {"title_raw": "Escribir a vendedor@ejemplo.com.py"},
         {"description_raw": "https://wa.me/595981123456"},
         {"attributes_raw": {"Contacto": "0981-123-456"}},
+        {"attributes_raw": {"Tel 0981 123 456": "si"}},  # el dato en la clave
     ],
 )
 def test_personal_data_is_rejected_without_echoing_it(overrides: dict[str, object]) -> None:
     with pytest.raises(ValidationError) as error:
         RawListing.model_validate(base(**overrides))
     assert "datos personales" in str(error.value)
-    assert "123" not in str(error.value).replace("source_id", "")
+    assert "0981" not in str(error.value) and "595" not in str(error.value)
+    assert "vendedor" not in str(error.value)
 
 
 def test_prices_and_ids_are_not_mistaken_for_phones() -> None:

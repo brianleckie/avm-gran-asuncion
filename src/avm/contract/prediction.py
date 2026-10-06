@@ -46,6 +46,8 @@ class PredictionRequest(ContractModel):
 
 
 class PredictionWarning(ContractModel):
+    """Advertencia de una predicción: código cerrado más un mensaje para mostrar al usuario."""
+
     code: WarningCode
     message: NonBlankStr
 

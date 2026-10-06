@@ -1,7 +1,7 @@
 """Tipos y base compartidos por los schemas del contrato."""
 
 from datetime import datetime, timedelta
-from typing import Annotated
+from typing import Annotated, ClassVar, Self
 from urllib.parse import urlsplit
 
 from pydantic import (
@@ -11,19 +11,45 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    model_validator,
 )
+
+from avm.contract.pii import find_pii
 
 # Tope de superficie: el mismo que usa avm.pipeline.parsing (fuera de (0, 100.000] m² es inválido).
 MAX_AREA_M2 = 100_000
 
 
 class ContractModel(BaseModel):
-    """Base: inmutable y sin campos extra (un parser no puede colar, por ejemplo, un teléfono).
+    """Base de todos los schemas: inmutable, sin campos extra y sin datos personales.
 
-    No se recortan espacios en forma global: los campos crudos y la URL quedan como vinieron.
+    - `extra="forbid"`: un parser no puede colar campos (por ejemplo, un teléfono).
+    - Ningún texto (campos string y claves/valores de diccionarios) puede contener teléfonos,
+      emails ni links de WhatsApp (CLAUDE.md). Ni los mensajes de error ni el input en el error
+      repiten el dato, para que no termine en un log.
+    - No se recortan espacios en forma global: los campos crudos y la URL quedan como vinieron.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+
+    # Campos que no son texto libre y no se revisan (un sha256 puede empezar con "0981...").
+    _PII_EXEMPT: ClassVar[frozenset[str]] = frozenset({"content_hash"})
+
+    @model_validator(mode="after")
+    def _no_personal_data(self) -> Self:
+        for name, value in self:
+            if name in self._PII_EXEMPT:
+                continue
+            if isinstance(value, str):
+                texts = [value]
+            elif isinstance(value, dict):
+                texts = [f"{key} {item}" for key, item in value.items()]
+            else:
+                continue
+            for text in texts:
+                if found := find_pii(text):
+                    raise ValueError(f"{name} contiene datos personales ({', '.join(found)})")
+        return self
 
 
 def _non_blank(value: str) -> str:

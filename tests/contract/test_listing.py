@@ -141,6 +141,36 @@ def test_values_and_provenance_or_match_go_together(overrides: dict[str, object]
         Listing.model_validate(base(**overrides))
 
 
+def test_unknown_currency_requires_raw_price_text() -> None:
+    with pytest.raises(ValidationError):
+        Listing.model_validate(
+            base(price_currency=None, currency_provenance=None, price_usd=None, price_raw=None)
+        )
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"price_raw": "Llamar 0981 123 456"},
+        {"neighborhood_raw": "Zona 0981 123 456"},
+        {"property_type_raw": "casa, info vendedor@ejemplo.com.py"},
+    ],
+)
+def test_personal_data_is_rejected_in_listing_without_echoing_it(
+    overrides: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError) as error:
+        Listing.model_validate(base(**overrides))
+    assert "datos personales" in str(error.value)
+    assert "0981" not in str(error.value) and "vendedor" not in str(error.value)
+
+
+def test_invalid_input_is_not_echoed_in_listing_errors() -> None:
+    with pytest.raises(ValidationError) as error:
+        Listing.model_validate(base(price_amount="abc 0981123456"))
+    assert "0981123456" not in str(error.value)
+
+
 def test_unmatched_neighborhood_uses_city_precision() -> None:
     listing = Listing.model_validate(
         base(neighborhood_norm=None, neighborhood_match="sin_match", geo_precision="ciudad")
@@ -163,6 +193,7 @@ def test_listing_with_coordinates_and_shared_flag() -> None:
         {**COORDS, "geo_precision": "barrio"},  # con coordenadas, precisión sin coordenadas
         {"geo_precision": "exacta"},  # sin coordenadas, precisión con coordenadas
         {"neighborhood_norm": None, "neighborhood_match": None},  # barrio sin barrio
+        {"geo_precision": "ciudad"},  # ciudad con barrio normalizado
         {**COORDS, "geo_precision": "exacta", "coordinate_flags": ["compartidas"]},
         {**COORDS, "latitude": -91},
         {**COORDS, "longitude": 181},

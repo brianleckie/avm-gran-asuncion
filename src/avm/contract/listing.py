@@ -8,7 +8,8 @@ portal (`estructurado`) o texto libre (`texto`). Las amenities son tri-estado: `
 el aviso no lo menciona, no que no lo tenga.
 
 Precio (ADR-004 / ADR-005): siempre se guardan el monto y la moneda originales. Con moneda
-desconocida (`price_currency=None`) el aviso es válido pero no tiene `price_usd`: qué hacer con
+desconocida (`price_currency=None`) el aviso es válido pero no tiene `price_usd` y tiene que
+conservar `price_raw`, que es lo que permite decidir después sin volver a scrapear. Qué hacer con
 esos avisos lo decide el ADR-005, y cualquiera de sus alternativas entra sin romper este schema
 (ver docs/adr/006-contrato-v0.1.md).
 
@@ -146,6 +147,9 @@ class Listing(ContractModel):
         if self.price_currency is None:
             if self.price_usd is not None or any(v is not None for v in fx):
                 raise ValueError("con moneda desconocida no hay price_usd ni cotización (ADR-005)")
+            if self.price_raw is None:
+                # ADR-005: el texto crudo es lo que permite decidir después sin volver a scrapear.
+                raise ValueError("con moneda desconocida hace falta price_raw (ADR-005)")
         elif self.price_currency is Currency.USD:
             if self.price_usd != self.price_amount:
                 raise ValueError("en USD, price_usd tiene que ser igual a price_amount")
@@ -183,6 +187,8 @@ class Listing(ContractModel):
             raise ValueError("sin coordenadas, geo_precision es barrio o ciudad")
         if self.geo_precision is GeoPrecision.NEIGHBORHOOD and self.neighborhood_norm is None:
             raise ValueError("geo_precision=barrio requiere neighborhood_norm")
+        if self.geo_precision is GeoPrecision.CITY and self.neighborhood_norm is not None:
+            raise ValueError("con neighborhood_norm la precisión es barrio, no ciudad")
         if self.geo_precision is GeoPrecision.EXACT and self.coordinate_flags:
             raise ValueError("unas coordenadas marcadas como sospechosas no pueden ser exactas")
         return self

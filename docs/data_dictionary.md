@@ -145,7 +145,7 @@ Estimación puntual e intervalo, por m² y total, en USD.
 
 ## PredictionWarning
 
-
+Advertencia de una predicción: código cerrado más un mensaje para mostrar al usuario.
 
 | Campo | Tipo | Obligatorio | Admite null | Default | Validaciones | Descripción |
 |---|---|---|---|---|---|---|

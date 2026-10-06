@@ -5,14 +5,12 @@ como string (ej. m² construidos "400"): así el mismo schema representa una fue
 estructurado (InfoCasas) y una de puro texto (Clasipar, docs/sources.md §3). Interpretar los
 valores es trabajo del pipeline (F4), que registra la procedencia en Listing.
 
-Ningún campo de texto puede contener teléfonos, emails ni links de WhatsApp: el parser tiene que
-sanitizar antes de construir el objeto (CLAUDE.md, F3.5). Los mensajes de error no repiten el
-input para que un dato personal rechazado no termine en un log.
+Como todo schema del contrato (ContractModel), rechaza teléfonos, emails y links de WhatsApp en
+cualquier texto, incluidas las claves y valores de `attributes_raw`: el parser tiene que sanitizar
+antes de construir el objeto (CLAUDE.md, F3.5). Los errores no repiten el dato.
 """
 
-from typing import Self
-
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import Field
 
 from avm.contract.common import (
     ContentHash,
@@ -23,13 +21,10 @@ from avm.contract.common import (
     UtcDatetime,
 )
 from avm.contract.enums import Source
-from avm.contract.pii import find_pii
 
 
 class RawListing(ContractModel):
     """Aviso tal como lo extrae el parser de una fuente."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
 
     source: Source
     source_id: NonBlankStr = Field(description="Id del aviso en la fuente (dedup exacto, F5.1).")
@@ -59,12 +54,3 @@ class RawListing(ContractModel):
         default_factory=dict,
         description="Otros pares clave-valor del portal (tags, ficha técnica).",
     )
-
-    @model_validator(mode="after")
-    def _no_personal_data(self) -> Self:
-        texts = [(name, value) for name, value in self if isinstance(value, str)]
-        texts += [(f"attributes_raw[{k!r}]", f"{k} {v}") for k, v in self.attributes_raw.items()]
-        for name, text in texts:
-            if found := find_pii(text):
-                raise ValueError(f"{name} contiene datos personales ({', '.join(found)})")
-        return self
