@@ -2,7 +2,7 @@
 
 Uso (desde la raíz del repo):
     $env:PYTHONPATH = "scripts"
-    uv run --group scraping python -m recon.fetch <fuente> <nombre>=<url> [<nombre>=<url> ...]
+    uv run python -m recon.fetch <fuente> <nombre>=<url> [<nombre>=<url> ...]
 
 Necesita data/raw/recon/<fuente>/robots.txt: es el que se bajó en la compuerta de red, y las
 requests de la compuerta ya están en el ledger. Corta en la primera URL prohibida, bloqueada o

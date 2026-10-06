@@ -466,7 +466,7 @@ cliente `scripts/recon/client.py` nunca reintenta. `BaseScraper` (F3.2) solo rei
 ## Reproducir
 ```powershell
 $env:PYTHONPATH = "scripts"
-uv run --group scraping python -m recon.fetch clasipar <nombre>=<url> ...   # respeta tope y robots
+uv run python -m recon.fetch clasipar <nombre>=<url> ...   # respeta tope y robots
 $env:PYTHONPATH = "src;scripts"
 uv run python -m recon.validate_parsers clasipar [--ver]
 $env:PYTHONPATH = "scripts"
