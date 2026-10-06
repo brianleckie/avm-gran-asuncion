@@ -34,6 +34,8 @@
 - [ ] F1.7 (B) Validación por lotes (pandera o pydantic) y tests de contrato
 - [ ] F1.8 (B/O) Versionado: `CONTRACT_VERSION` semántico. Un cambio que rompe compatibilidad requiere ADR más migración
 
+→ propuesta v0.1.0 en PR, pendiente revisión de Oscar (ADR-006 con preguntas abiertas; FeatureRow diferido hasta F6.4)
+
 ## F2 — Datos sintéticos (desbloquea modelado en paralelo)
 - [ ] F2.1 (O) Gazetteer provisorio de barrios por ciudad, como lista inicial
 - [ ] F2.2 (O) Generador: USD/m² lognormal por barrio, efectos hedónicos (m², dormitorios, piscina, a estrenar, pavimento), ruido heteroscedástico

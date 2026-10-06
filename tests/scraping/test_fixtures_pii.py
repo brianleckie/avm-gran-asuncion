@@ -4,22 +4,16 @@ Los nombres de anunciantes no se pueden detectar con un regex: se reemplazan con
 scripts/recon/sanitize.py y se revisan a mano.
 """
 
-import re
 from pathlib import Path
 
 import pytest
 
+from avm.contract.pii import PATTERNS
+
 FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 
-PII_PATTERNS = {
-    # Celulares y fijos; el lookbehind evita confundir los grupos de un precio.
-    "teléfono PY": re.compile(
-        r"(?<![\w.,/-])(?:\+?595|0)[\s.-]?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}"
-        r"|(?<![\w.,/-])(?:\(?\+?595[\s.-]?|\(?0)[2-8]\d\)?[\s.-]?\d{3}[\s.-]?\d{3,4}"
-    ),
-    "email": re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"),
-    "WhatsApp": re.compile(r"wa\.me/|api\.whatsapp\.com", re.I),
-}
+# Los mismos patrones con los que RawListing rechaza datos personales (avm.contract.pii).
+PII_PATTERNS = PATTERNS
 
 
 def find_pii(text: str) -> list[str]:

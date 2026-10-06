@@ -21,17 +21,14 @@ import re
 import sys
 from pathlib import Path
 
+from avm.contract.pii import EMAIL, PHONE
+
 RECON_DIR = Path("data/raw/recon")
 FIXTURES_DIR = Path("tests/fixtures")
 MAX_FIXTURE_BYTES = 450_000
 
-# Mismo patrón que el test de PII. Celulares (09xx xxx xxx, +595 9xx...) y fijos (021 xxx xxx,
-# (595 21) xxx xxxx). El lookbehind evita confundir los grupos de un precio ("1.200.000.000").
-PHONE = re.compile(
-    r"(?<![\w.,/-])(?:\+?595|0)[\s.-]?9\d{2}[\s.-]?\d{3}[\s.-]?\d{3}"
-    r"|(?<![\w.,/-])(?:\(?\+?595[\s.-]?|\(?0)[2-8]\d\)?[\s.-]?\d{3}[\s.-]?\d{3,4}"
-)
-EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+# Teléfonos y emails: los mismos patrones con los que RawListing rechaza datos personales.
+# WhatsApp va aparte porque acá hay que reemplazar el link entero, no solo detectarlo.
 WHATSAPP = re.compile(r"(?:https?:)?//(?:wa\.me|api\.whatsapp\.com)/[^\s\"'<]*", re.I)
 
 _DROP = re.compile(
