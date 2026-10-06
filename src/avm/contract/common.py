@@ -4,7 +4,14 @@ from datetime import datetime, timedelta
 from typing import Annotated
 from urllib.parse import urlsplit
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, BeforeValidator, ConfigDict
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+)
 
 # Tope de superficie: el mismo que usa avm.pipeline.parsing (fuera de (0, 100.000] m² es inválido).
 MAX_AREA_M2 = 100_000
@@ -48,14 +55,15 @@ def _blank_to_none(value: object) -> object:
     return value
 
 
-def _sha256_hex(value: str) -> str:
-    if len(value) != 64 or any(char not in "0123456789abcdef" for char in value):
-        raise ValueError("debe ser un sha256 en hexadecimal minúscula (64 caracteres)")
-    return value
+def _rule(text: str) -> object:
+    """Documenta en el JSON Schema una validación propia (la lee el diccionario de datos, F1.6)."""
+    return Field(json_schema_extra={"x-validacion": text})
 
 
-NonBlankStr = Annotated[str, AfterValidator(_non_blank)]
-HttpUrlStr = Annotated[str, AfterValidator(_http_url)]
-UtcDatetime = Annotated[AwareDatetime, AfterValidator(_utc)]
-RawText = Annotated[str | None, BeforeValidator(_blank_to_none)]
-ContentHash = Annotated[str, AfterValidator(_sha256_hex)]
+NonBlankStr = Annotated[str, AfterValidator(_non_blank), _rule("no vacío")]
+HttpUrlStr = Annotated[
+    str, AfterValidator(_http_url), _rule("URL http(s) absoluta, sin espacios, sin normalizar")
+]
+UtcDatetime = Annotated[AwareDatetime, AfterValidator(_utc), _rule("con zona horaria, en UTC")]
+RawText = Annotated[str | None, BeforeValidator(_blank_to_none), _rule("texto crudo; vacío → null")]
+ContentHash = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$"), _rule("sha256 hexadecimal")]
