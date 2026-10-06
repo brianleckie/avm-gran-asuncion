@@ -9,4 +9,4 @@ Política (ADR-006):
 
 from typing import Final
 
-CONTRACT_VERSION: Final = "0.1.0"
+CONTRACT_VERSION: Final = "0.1.1"

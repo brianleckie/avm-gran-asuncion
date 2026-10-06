@@ -1,6 +1,6 @@
 # Diccionario de datos
 
-Contrato v0.1.0, PROPUESTA pendiente de revisión (docs/adr/006-contrato-v0.1.md).
+Contrato v0.1.1, PROPUESTA pendiente de revisión (docs/adr/006-contrato-v0.1.md).
 
 **Archivo generado** por `scripts/gen_data_dictionary.py` desde `src/avm/contract/`: no
 editarlo a mano. Las reglas entre campos (por ejemplo, valor y procedencia van juntos)
@@ -34,7 +34,7 @@ Aviso tal como lo extrae el parser de una fuente.
 | `source_id` | string | sí | no |  | no vacío | Id del aviso en la fuente (dedup exacto, F5.1). |
 | `url` | string | sí | no |  | URL http(s) absoluta, sin espacios, sin normalizar | URL del aviso, idéntica al crudo (sin normalizar). |
 | `scraped_at` | date-time | sí | no |  | con zona horaria, en UTC | Momento del scrape, en UTC. |
-| `content_hash` | string | sí | no |  | patrón `^[0-9a-f]{64}$`; sha256 hexadecimal | sha256 del contenido crudo (F3.6). |
+| `content_hash` | string | sí | no |  | patrón `^[0-9a-f]{64}$`; sha256 hexadecimal | sha256 de un JSON canónico de los campos de contenido extraídos, sin scraped_at ni atributos volátiles de la fuente (D2, F3.6). |
 | `title_raw` | string | no | sí | `null` | texto crudo; vacío → null |  |
 | `description_raw` | string | no | sí | `null` | texto crudo; vacío → null |  |
 | `price_raw` | string | no | sí | `null` | texto crudo; vacío → null | Precio como lo publica el portal. |
@@ -141,7 +141,7 @@ Estimación puntual e intervalo, por m² y total, en USD.
 | `coverage_nominal` | number | sí | no |  | > 0; < 1 | Cobertura nominal del intervalo. |
 | `warnings` | lista de `PredictionWarning` | no | no | `[]` |  |  |
 | `model_version` | string | sí | no |  | no vacío |  |
-| `contract_version` | string | no | no | `"0.1.0"` | patrón `^\d+\.\d+\.\d+$` |  |
+| `contract_version` | string | no | no | `"0.1.1"` | patrón `^\d+\.\d+\.\d+$` |  |
 
 ## PredictionWarning
 

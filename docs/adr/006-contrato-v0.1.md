@@ -49,6 +49,7 @@ Este ADR es una **propuesta**: todo lo que decide se puede cambiar en la revisi�
     - Agregar un valor de enum o un campo opcional es un cambio **menor**.
     - Quitar o renombrar un campo o un valor, o volver obligatorio un campo opcional, es un cambio **mayor**, con ADR y migración.
     - `PredictionResponse` informa la versión del contrato con la que se generó.
+    - Historial: **0.1.1** (PATCH, solo documentación): la descripción de `RawListing.content_hash` pasa a decir lo que hace el parser (sha256 de un JSON canónico de los campos de contenido, sin `scraped_at` ni atributos volátiles; D2, `docs/sources.md` §2.8). No cambia qué datos son válidos.
 17. **Convenciones.**
     - Modelos inmutables y sin campos extra.
     - Identificadores en inglés (CLAUDE.md) y valores de enum en español, porque son datos del dominio.

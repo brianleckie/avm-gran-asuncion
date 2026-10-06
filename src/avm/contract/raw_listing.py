@@ -30,7 +30,12 @@ class RawListing(ContractModel):
     source_id: NonBlankStr = Field(description="Id del aviso en la fuente (dedup exacto, F5.1).")
     url: HttpUrlStr = Field(description="URL del aviso, idéntica al crudo (sin normalizar).")
     scraped_at: UtcDatetime = Field(description="Momento del scrape, en UTC.")
-    content_hash: ContentHash = Field(description="sha256 del contenido crudo (F3.6).")
+    content_hash: ContentHash = Field(
+        description=(
+            "sha256 de un JSON canónico de los campos de contenido extraídos, sin scraped_at "
+            "ni atributos volátiles de la fuente (D2, F3.6)."
+        )
+    )
 
     title_raw: RawText = None
     description_raw: RawText = None
