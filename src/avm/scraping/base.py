@@ -21,8 +21,9 @@ Reglas (CLAUDE.md, docs/sources.md y las decisiones D1 y D3 de F3.2):
   red) son un `FetchResult` con `outcome="error"` y no se reintentan. No se siguen redirecciones.
 - Solo se escribe a disco HTML YA SANITIZADO (D1): `data/raw/<YYYY-MM-DD>/<fuente>/<sha256 de la
   URL>.html`. Si la sanitización falla (`SanitizationError`) no se escribe nada. Con la URL en
-  caché no hay request. El log `requests.jsonl` (url, status, timestamp UTC, bytes, resultado) y el
-  `manifest.json` no llevan cuerpos ni headers.
+  caché no hay request. El log `requests.jsonl` (url, status, timestamp UTC, bytes, resultado y
+  `duration_s`) y el `manifest.json` no llevan cuerpos ni headers. `duration_s` es lo que tardó el
+  intercambio HTTP (sin la demora entre requests) y es `null` si no se envió nada (caché o robots).
 
 La demora se lleva por instancia: una corrida usa UN scraper por fuente y snapshot (dos instancias
 seguidas enviarían su primera request, la de robots.txt, sin esperar). La caché se lee tal como se
@@ -41,7 +42,7 @@ import random
 import time
 from collections import Counter
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 from types import TracebackType
@@ -106,6 +107,7 @@ class _Reply:
     status: int | None  # None: timeout o error de red, sin respuesta
     body: bytes
     encoding: str = "utf-8"
+    duration_s: float | None = None  # lo que tardó el intercambio HTTP, sin la demora previa
 
     @property
     def text(self) -> str:
@@ -183,6 +185,7 @@ class BaseScraper:
         self._started_at = utcnow()
         self._used = 0
         self._counts: Counter[str] = Counter()
+        self._latencies: list[float] = []
         self._last_done: float | None = None
         self._robots: RobotFileParser | None = None
         self._robots_error: RobotsUnavailableError | None = None
@@ -198,6 +201,16 @@ class BaseScraper:
     @property
     def requests_remaining(self) -> int:
         return self.max_requests - self._used
+
+    @property
+    def counts(self) -> dict[str, int]:
+        """Resultados registrados hasta ahora (una copia, con todas las claves de `OUTCOMES`)."""
+        return {outcome: self._counts[outcome] for outcome in OUTCOMES}
+
+    @property
+    def latencies_s(self) -> tuple[float, ...]:
+        """Duración en segundos de cada request enviada (robots.txt y reintentos incluidos)."""
+        return tuple(self._latencies)
 
     def __enter__(self) -> Self:
         return self
@@ -245,7 +258,7 @@ class BaseScraper:
             "finished_at": self._utcnow().isoformat(),
             "max_requests": self.max_requests,
             "requests_used": self._used,
-            "counts": {outcome: self._counts[outcome] for outcome in OUTCOMES},
+            "counts": self.counts,
             "blocked": self._blocked_reason is not None,
             "blocked_reason": self._blocked_reason,
             "min_delay_s": self._min_delay,
@@ -282,6 +295,7 @@ class BaseScraper:
         while True:
             self._spend()
             self._wait(floor=self._min_delay * 2 ** (retries - 1) if retries else 0.0)
+            started = self._clock()
             try:
                 response = self._client.get(url)
             except httpx.TimeoutException:
@@ -292,33 +306,35 @@ class BaseScraper:
                 reply = _Reply(response.status_code, response.content, response.encoding or "utf-8")
                 retryable = response.status_code >= 500
             self._last_done = self._clock()
+            reply = replace(reply, duration_s=self._last_done - started)
+            self._latencies.append(self._last_done - started)
             if reply.status is not None and (
                 reason := looks_blocked(reply.status, reply.body, generic_markers=generic_markers)
             ):
                 self._block(url, reply, reason)
             if retryable and retries < MAX_RETRIES:
-                self._log(url, reply.status, len(reply.body), "error")
+                self._log(url, reply.status, len(reply.body), "error", reply.duration_s)
                 retries += 1
                 continue
             return reply
 
     def _block(self, url: str, reply: _Reply, reason: str) -> NoReturn:
         self._blocked_reason = f"{reason} en {url}"
-        self._log(url, reply.status, len(reply.body), "bloqueado")
+        self._log(url, reply.status, len(reply.body), "bloqueado", reply.duration_s)
         raise BlockedError(f"{self.host} bloqueado: {self._blocked_reason}")
 
     def _settle(self, url: str, reply: _Reply) -> FetchResult:
         status = reply.status
         if status is None or not 200 <= status < 300:
-            self._log(url, status, len(reply.body), "error")
+            self._log(url, status, len(reply.body), "error", reply.duration_s)
             return FetchResult(url, "error", status)
         try:
             html = self._sanitize(reply.text)
         except SanitizationError:  # falla cerrado: lo que no se puede sanitizar no se escribe
-            self._log(url, status, len(reply.body), "error")
+            self._log(url, status, len(reply.body), "error", reply.duration_s)
             return FetchResult(url, "error", status)
         self._write_cache(url, html)
-        self._log(url, status, len(reply.body), "ok")
+        self._log(url, status, len(reply.body), "ok", reply.duration_s)
         return FetchResult(url, "ok", status, html)
 
     # ------------------------------------------------------------------ robots
@@ -340,12 +356,12 @@ class BaseScraper:
         status = reply.status
         # Sin respuesta, 401 (como urllib.robotparser: todo prohibido), redirección o 5xx.
         if status is None or status in (401, *range(300, 400)) or status >= 500:
-            self._log(url, status, len(reply.body), "error")
+            self._log(url, status, len(reply.body), "error", reply.duration_s)
             raise RobotsUnavailableError(f"no se pudo leer {url} (status {status})")
         parser = RobotFileParser()
         # 2xx: se parsea. 4xx (sin robots.txt): sin reglas, todo permitido.
         parser.parse(reply.text.splitlines() if status < 300 else [])
-        self._log(url, status, len(reply.body), "ok")
+        self._log(url, status, len(reply.body), "ok", reply.duration_s)
         crawl_delay = parser.crawl_delay(PRODUCT_TOKEN)
         if crawl_delay is not None:
             self._min_delay = max(self._min_delay, float(crawl_delay))
@@ -364,7 +380,14 @@ class BaseScraper:
         partial.write_text(html, encoding="utf-8", newline="\n")
         partial.replace(path)
 
-    def _log(self, url: str, status: int | None, size: int, result: Outcome) -> None:
+    def _log(
+        self,
+        url: str,
+        status: int | None,
+        size: int,
+        result: Outcome,
+        duration_s: float | None = None,
+    ) -> None:
         self._counts[result] += 1
         entry = {
             "url": url,
@@ -372,6 +395,7 @@ class BaseScraper:
             "ts": self._utcnow().isoformat(),
             "bytes": size,
             "result": result,
+            "duration_s": None if duration_s is None else round(duration_s, 3),
         }
         self.directory.mkdir(parents=True, exist_ok=True)
         with (self.directory / LOG_NAME).open("a", encoding="utf-8", newline="\n") as log:
