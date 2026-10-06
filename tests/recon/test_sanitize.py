@@ -3,7 +3,9 @@
 Los fragmentos imitan la estructura observada en Clasipar (F3.1); los nombres son inventados.
 """
 
-from recon.sanitize import scrub_clasipar_names, scrub_contacts, trim
+from recon.sanitize import scrub_clasipar_names
+
+from avm.scraping.sanitize import scrub_contacts, trim
 
 E = "https://clasipar.paraguay.com/empresa/"
 

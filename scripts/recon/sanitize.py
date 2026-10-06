@@ -21,33 +21,11 @@ import re
 import sys
 from pathlib import Path
 
-from avm.contract.pii import EMAIL, PHONE
+from avm.scraping.sanitize import scrub_contacts, trim
 
 RECON_DIR = Path("data/raw/recon")
 FIXTURES_DIR = Path("tests/fixtures")
 MAX_FIXTURE_BYTES = 450_000
-
-# Teléfonos y emails: los mismos patrones con los que RawListing rechaza datos personales.
-# WhatsApp va aparte porque acá hay que reemplazar el link entero, no solo detectarlo.
-WHATSAPP = re.compile(r"(?:https?:)?//(?:wa\.me|api\.whatsapp\.com)/[^\s\"'<]*", re.I)
-
-_DROP = re.compile(
-    r"<script(?![^>]*application/ld\+json)[^>]*>.*?</script>"
-    r"|<(style|svg|iframe|noscript)\b[^>]*>.*?</\1>"
-    r"|<!--.*?-->",
-    re.S | re.I,
-)
-
-
-def trim(page: str) -> str:
-    page = _DROP.sub("", page)
-    return re.sub(r"\n\s*\n+", "\n", page)
-
-
-def scrub_contacts(page: str) -> str:
-    page = WHATSAPP.sub("[WHATSAPP]", page)
-    page = EMAIL.sub("[EMAIL]", page)
-    return PHONE.sub("[TELEFONO]", page)
 
 
 def scrub_clasipar_names(page: str) -> str:
