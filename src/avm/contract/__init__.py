@@ -1,6 +1,6 @@
 """Contrato de datos: schemas pydantic que son la fuente de verdad del proyecto.
 
-Versión 0.1.0, PROPUESTA pendiente de revisión (docs/adr/006-contrato-v0.1.md).
+Versión 0.1.1, PROPUESTA pendiente de revisión (docs/adr/006-contrato-v0.1.md).
 """
 
 from avm.contract.enums import (

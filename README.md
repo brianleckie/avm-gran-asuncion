@@ -14,7 +14,7 @@ uv run pytest           # corre los tests
 uv run pre-commit install   # hooks de git (una vez por clon)
 ```
 
-Con `just`: `just install`, `just test`, `just check` (lint + mypy + tests). `just --list` muestra todas las tareas; las del pipeline todavía no están implementadas.
+Con `just`: `just install`, `just test`, `just check` (lint + mypy + tests). `just --list` muestra todas las tareas; `just scrape <fuente> <presupuesto> <por_búsqueda> <seed>` (F3.3, los 4 parámetros son obligatorios) es la única tarea del pipeline implementada; el resto todavía no.
 
 ## Más información
 
