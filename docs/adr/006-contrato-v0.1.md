@@ -56,7 +56,7 @@ Este ADR es una **propuesta**: todo lo que decide se puede cambiar en la revisi�
 
 ## Consecuencias
 - **El denominador del target condiciona cuántos avisos tienen target.** Con USD/m² sobre m² construidos, un aviso sin `built_area_m2` no tiene target y no entra al entrenamiento.
-  - En Clasipar la superficie solo aparece en texto (§2.5). En la validación de F3.1, de 23 strings de superficie solo 3 quedaron como `construida`, 2 como `terreno` y 18 sin tipo (§5).
+  - En Clasipar la superficie solo aparece en texto (§2.5). En la validación de F3.1, de 22 strings de superficie (títulos de las 13 páginas filtradas y descripciones de los 3 detalles) solo 3 quedaron como `construida`, 2 como `terreno` y 17 sin tipo (§5, cifras corregidas el 2026-10-06: ver `docs/sources.md` §8.1).
   - Si F4.3 no logra resolver el tipo de superficie, el volumen con target puede ser bajo. La magnitud no se puede estimar con 3 detalles (§4) y queda para F3.4/F7.
   - Para departamentos, la superficie construida es la natural. Para casas no es obvio: el terreno pesa en el precio, y USD por m² construido mezcla el valor del lote con el de la construcción.
   - Si F7 muestra que conviene otra definición (m² de terreno para casas, una "superficie principal" por tipo, o modelar el precio total con las dos superficies como features), cambian F8.1 y `PredictionRequest`. Volver opcional `built_area_m2` o exigir otra superficie es un cambio de contrato con ADR.

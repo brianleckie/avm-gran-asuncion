@@ -203,12 +203,14 @@ categorías: en la muestra hubo un terreno dentro de "casas" y un local comercia
   parser tiene que descartar estos spans por el estilo, no por la clase.**
 
 ### 2.5 Matriz de campos
-Las tarjetas son 318 avisos únicos de los 13 listados. Los detalles son **solo 3**, así que en el
-detalle "siempre/a veces" describe esa muestra, no el portal.
+Las 13 páginas de listado (venta × tipo × ciudad, más la página 2 de casas de Asunción) traen
+366 tarjetas: 365 avisos únicos (318 orgánicos y 47 patrocinados distintos; un premium se repite
+en las páginas 1 y 2 de casas de Asunción). Los detalles son **solo 3**, así que en el detalle
+"siempre/a veces" describe esa muestra, no el portal. Cifras corregidas el 2026-10-06 (ver §8.1).
 
 | Campo | Presencia | Path | Ejemplo crudo |
 |---|---|---|---|
-| precio | tarjeta: siempre (1/318 "Consultar precio."); detalle 3/3 | `p.price`, `h3.user-price` | `US$. 235.000,00` |
+| precio | tarjeta: siempre (1/366 "Consultar precio."); detalle 3/3 | `p.price`, `h3.user-price` | `US$. 235.000,00` |
 | moneda | dentro del string del precio: `US$.` o `Gs.` | idem | `Gs. 1.200.000.000` |
 | m² construidos | **nunca estructurado**; a veces en título o descripción | texto libre | `Construcción: 90 m²` |
 | m² de terreno | **nunca estructurado**; a veces en texto | texto libre | `Terreno: 180 m²` |
@@ -283,8 +285,10 @@ Riesgos de Clasipar:
   F3.4/F4.3.
 - **Barrio en texto libre ("Zona")**, a veces igual a la ciudad. Depende de F4.4 (gazetteer y
   fuzzy matching) y va a dejar avisos con precisión "ciudad".
-- **Calidad del dato:** 17 de 415 precios con montos implausibles para una venta (ver §5),
-  inmuebles fuera de alcance dentro de las categorías y títulos que nombran otra ciudad. Hacen
+- **Calidad del dato:** 13 de 366 precios con montos bajos para una venta (criterio en §5);
+  inmuebles fuera de alcance dentro de las categorías (5 de 365 títulos mencionan local o salón
+  comercial o quinta); 7 títulos que mencionan "alquil..." en páginas con intención "Vendo" (5 de
+  ellos también dicen vender, como "alquilo o vendo"); y títulos que nombran otra ciudad. Hacen
   falta las reglas de F4.6 y un filtro de tipo por texto.
 - **Propiedad intelectual:** no publicar descripciones ni fotos, ni el dataset crudo. Los fixtures
   se recortaron y sanitizaron. Conviene revisarlo con el tutor.
@@ -311,28 +315,37 @@ modificó. Se cuentan ocurrencias: un destacado que se repite en dos páginas cu
   en esos campos (dato de la fuente). Todos con `kind=None`, porque la tarjeta muestra
   "135 m²" sin indicar si es construida o terreno (el JSON sí lo distingue).
 
-**Clasipar** (tarjetas y 3 detalles; sin valores estructurados, revisión manual):
-- `parse_price`: **414/415 parseados**. El único `None` es "Consultar precio.", que es el
-  comportamiento esperado.
+**Clasipar** (tarjetas de las 13 páginas de listado filtradas y 3 detalles; sin valores
+estructurados, revisión manual). Cifras corregidas el 2026-10-06: la versión original incluía
+la página genérica `/inmuebles/casas` (ver §8.1).
+- `parse_price`: **365/366 parseados** en las 13 páginas y **3/3** en los 3 detalles. El único
+  `None` es "Consultar precio.", que es el comportamiento esperado.
   - Formatos: `US$. 999.999,99` (coma decimal con centavos), `Gs. 999.999.999`.
   - Revisados a mano: en todos los casos el monto leído coincide con el string.
-  - **17 strings tienen montos implausibles para una venta** (`US$. 1,00`, `US$. 999,99`,
-    `Gs. 110`, `Gs. 1.500.000`...). No es un error del parser: van a tener que filtrarse en F4.6.
-- `parse_area`: 23 strings con m² en títulos y descripciones; **23/23 con el número correcto**
-  (revisión manual), incluido `1.213 m2` → 1213.
-  - `kind`: 18 `None`, 3 `construida`, 2 `terreno`.
+  - **13 strings con montos bajos para una venta** en las 13 páginas (`US$. 1,00`, `US$. 165,00`,
+    `Gs. 110`, `Gs. 600`, `Gs. 5.500.000`...). Criterio: USD < 10.000 o Gs < 100.000.000. Es solo
+    un umbral para localizarlos, no un rango plausible (eso se fija en F4.6 sin mirar el target,
+    ver ADR-006). No es un error del parser: van a tener que filtrarse en F4.6.
+- `parse_area`: en las 13 páginas, **18 strings con m² en títulos** (de 365 avisos únicos: 4,9 %,
+  todos únicos entre sí); en los 3 detalles, **4 líneas** con m² en las descripciones (las 3
+  mencionan m²). En total **22 strings únicos**. El número es correcto en los 22 (revisión manual
+  de F3.1 sobre los mismos strings), incluido `1.213 m2` → 1213.
+  - `kind` en las 13 páginas: 15 `None`, 2 `construida`, 1 `terreno`. En los detalles: 2 `None`,
+    1 `construida`, 1 `terreno`. Total: **17 `None`, 3 `construida`, 2 `terreno`**.
   - Uno dudoso: "940M2 C/ CONSTRUCCION" → `construida`, cuando probablemente se refiere al lote
     *con* construcción.
   - "desde 68 m2" se lee como 68, sin marca de "desde": `ParsedArea` no tiene ese flag.
 
-**Datos para el ADR-005** (`currency=None`): de 688 strings de precio de las dos fuentes se
-parsearon 687, y **ninguno** quedó con `currency=None`. Las dos publican la moneda explícita en el campo
-del precio (InfoCasas además en un campo estructurado). En la muestra, el caso sin moneda no
-aparece en el precio principal. Puede existir en otros lugares (descripciones) o en otras
-fuentes. El ADR-005 no se modificó.
+**Datos para el ADR-005** (`currency=None`): de 642 strings de precio de las dos fuentes
+(InfoCasas 273; Clasipar 366 de las 13 páginas y 3 de detalles) se parsearon 641, y **ninguno**
+quedó con `currency=None`. Las dos publican la moneda explícita en el campo del precio (InfoCasas
+además en un campo estructurado). En la muestra, el caso sin moneda no aparece en el precio
+principal. Puede existir en otros lugares (descripciones) o en otras fuentes. El ADR-005 no se
+modificó.
 
-**Datos para el ADR-004** (moneda): InfoCasas 176 USD / 97 PYG (n=273). Clasipar 229 USD /
-185 PYG (n=414). Son muestras de las primeras páginas, no proporciones del portal.
+**Datos para el ADR-004** (moneda): InfoCasas 176 USD / 97 PYG (n=273). Clasipar, en las 13
+páginas: 207 USD / 158 PYG (n=365); en los 3 detalles: 1 USD / 2 PYG. Son muestras de las primeras
+páginas, no proporciones del portal.
 
 ## 6. Implicancias para el contrato (F1)
 
@@ -375,6 +388,30 @@ cambio lleva ADR.
   - ADR-005: ningún `currency=None` en la muestra (§5).
 - Fixtures: el código interno al final de algunas descripciones ("ID: 38434 vf") se dejó tal cual.
   Podría contener iniciales del agente; si el equipo lo prefiere, se reemplaza.
+
+## 8. Correcciones posteriores a F3.1
+
+### 8.1 Conteos de Clasipar (2026-10-06)
+Además de las 13 páginas de listado filtradas (venta × tipo × ciudad, más la página 2 de casas de
+Asunción), el reconocimiento bajó la página genérica `/inmuebles/casas`, que no filtra por
+operación ni por ciudad y mezcla alquileres: de sus 46 tarjetas, 10 dicen "Doy en alquiler". El
+validador recorre todos los `*.body` de la carpeta, así que las cifras de §2.5, §4 y §5 la
+incluían (los 415 strings de precio eran 366 + 46 + 3 detalles). Se re-corrió solo sobre las 13
+páginas filtradas, con los 3 detalles aparte:
+
+| Dato | Antes | Después |
+|---|---|---|
+| Tarjetas / avisos únicos | "318 únicos" (eran solo los orgánicos) | 366 / 365 (318 orgánicos + 47 patrocinados) |
+| Precios parseados (Clasipar) | 414/415 | 365/366 en las 13 páginas; 3/3 en los detalles |
+| Moneda en tarjetas | 229 USD / 185 PYG (n=414) | 207 USD / 158 PYG (n=365) |
+| Montos bajos para una venta | "17 implausibles" | 13 (criterio en §5) |
+| Superficies | 23 (18 `None`, 3 `construida`, 2 `terreno`) | 22 únicos (17 `None`, 3 `construida`, 2 `terreno`) |
+| Strings de precio de las dos fuentes (ADR-005) | 687/688 | 641/642 |
+
+El "17" original no se puede reproducir: no documentó su criterio y sus ejemplos incluían
+montos de la página genérica (por ejemplo `Gs. 1.500.000`, que es un monto de alquiler). Las
+cifras de InfoCasas no cambian. ADR-006 (Consecuencias) y el ROADMAP (F4.1) citaban las cifras
+anteriores y se actualizaron.
 
 ## Reproducir
 ```powershell
