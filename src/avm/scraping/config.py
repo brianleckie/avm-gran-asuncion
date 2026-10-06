@@ -16,7 +16,8 @@ USER_AGENT: Final = (
 # Token de producto: es lo que robots.txt compara contra los `User-agent:`.
 PRODUCT_TOKEN: Final = USER_AGENT.split("/", 1)[0]
 
-# Cortesía (mínimos). El ledger de F3.1 respetó 6 s entre requests sin bloqueos en 22 requests.
+# Cortesía (mínimos). En F3.1, 37 de 40 separaciones entre requests fueron de 7,7 s o más y no hubo
+# bloqueos; las otras 3 son el reintento de robots.txt de la compuerta (docs/sources.md §8.2).
 MIN_DELAY_S: Final = 6.0
 JITTER_MAX_S: Final = 1.0
 MAX_RETRIES: Final = 2

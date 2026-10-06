@@ -9,9 +9,11 @@ Reglas (CLAUDE.md, docs/sources.md y las decisiones D1 y D3 de F3.2):
   intento cuenta, también el de robots.txt y los reintentos. Nunca se excede: al agotarse,
   `BudgetExhaustedError` antes de enviar.
 - robots.txt (`urllib.robotparser`) se pide una vez por corrida, con este mismo cliente, y se
-  consulta antes de cada URL: una URL prohibida no se pide. LIMITACIÓN: `urllib.robotparser` no
-  entiende los comodines `*` ni `$`; Clasipar no los usa (docs/sources.md §2.1), pero una fuente
-  que sí los use los evaluaría mal y habría que reemplazar el matcher.
+  consulta antes de cada URL: una URL prohibida no se pide. Si no se puede leer (sin respuesta,
+  401, redirección o 5xx), `RobotsUnavailableError` y no se vuelve a pedir en esa corrida.
+  LIMITACIÓN: `urllib.robotparser` no entiende los comodines `*` ni `$`; Clasipar no los usa
+  (docs/sources.md §2.1), pero una fuente que sí los use los evaluaría mal y habría que reemplazar
+  el matcher.
 - 403, 429 o un challenge (marcadores de `config.py`) detienen la corrida entera: `BlockedError`,
   sin reintentos, y toda llamada posterior lanza sin enviar nada.
 - Solo se reintentan timeouts y respuestas 5xx, como máximo `MAX_RETRIES` (2) veces, con una
@@ -21,6 +23,11 @@ Reglas (CLAUDE.md, docs/sources.md y las decisiones D1 y D3 de F3.2):
   URL>.html`. Si la sanitización falla (`SanitizationError`) no se escribe nada. Con la URL en
   caché no hay request. El log `requests.jsonl` (url, status, timestamp UTC, bytes, resultado) y el
   `manifest.json` no llevan cuerpos ni headers.
+
+La demora se lleva por instancia: una corrida usa UN scraper por fuente y snapshot (dos instancias
+seguidas enviarían su primera request, la de robots.txt, sin esperar). La caché se lee tal como se
+escribió, sin volver a sanitizar: si cambia el sanitizador, las páginas ya cacheadas del mismo
+snapshot conservan la versión vieja. Solo se piden URLs https del host de la fuente.
 
 El transporte HTTP, el reloj, el sleep, la hora UTC y el generador de jitter son inyectables para
 testear sin red y sin esperar.
@@ -178,6 +185,7 @@ class BaseScraper:
         self._counts: Counter[str] = Counter()
         self._last_done: float | None = None
         self._robots: RobotFileParser | None = None
+        self._robots_error: RobotsUnavailableError | None = None
         self._blocked_reason: str | None = None
         self._closed = False
 
@@ -211,8 +219,9 @@ class BaseScraper:
             raise ScraperError("el scraper ya se cerró")
         if self._blocked_reason is not None:
             raise BlockedError(f"{self.host} bloqueado: {self._blocked_reason}")
-        if urlsplit(url).hostname != self.host:
-            raise ValueError(f"{url} no es del host {self.host}")
+        parts = urlsplit(url)
+        if parts.scheme != "https" or parts.hostname != self.host:
+            raise ValueError(f"{url} no es una URL https del host {self.host}")
         cached = self._read_cache(url)
         if cached is not None:
             self._log(url, None, len(cached.encode("utf-8")), "cache")
@@ -315,15 +324,22 @@ class BaseScraper:
     # ------------------------------------------------------------------ robots
 
     def _allowed_by_robots(self, url: str) -> bool:
+        if self._robots_error is not None:  # se pide una vez por corrida, también si falló
+            raise self._robots_error
         if self._robots is None:
-            self._robots = self._load_robots()
+            try:
+                self._robots = self._load_robots()
+            except RobotsUnavailableError as error:
+                self._robots_error = error
+                raise
         return self._robots.can_fetch(PRODUCT_TOKEN, url)
 
     def _load_robots(self) -> RobotFileParser:
         url = f"https://{self.host}/robots.txt"
         reply = self._send(url, generic_markers=False)
         status = reply.status
-        if status is None or status >= 500 or 300 <= status < 400:
+        # Sin respuesta, 401 (como urllib.robotparser: todo prohibido), redirección o 5xx.
+        if status is None or status in (401, *range(300, 400)) or status >= 500:
             self._log(url, status, len(reply.body), "error")
             raise RobotsUnavailableError(f"no se pudo leer {url} (status {status})")
         parser = RobotFileParser()

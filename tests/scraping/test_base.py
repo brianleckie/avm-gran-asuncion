@@ -165,6 +165,12 @@ def test_other_host_is_rejected(tmp_path: Path, server: Server, clock: FakeClock
     assert server.calls == []
 
 
+def test_only_https_urls_are_requested(tmp_path: Path, server: Server, clock: FakeClock) -> None:
+    with make_scraper(tmp_path, server, clock) as scraper, pytest.raises(ValueError, match="https"):
+        scraper.fetch(f"http://{HOST}/a")
+    assert server.calls == []
+
+
 # ---------------------------------------------------------------------------- presupuesto
 
 
@@ -319,8 +325,13 @@ def test_missing_robots_txt_allows_everything(
 
 @pytest.mark.parametrize(
     "replies",
-    [[status(503)], [status(301, headers={"location": f"{BASE}/otro"})], [timeout()]],
-    ids=["5xx", "redirect", "timeout"],
+    [
+        [status(503)],
+        [status(301, headers={"location": f"{BASE}/otro"})],
+        [timeout()],
+        [status(401)],
+    ],
+    ids=["5xx", "redirect", "timeout", "401"],
 )
 def test_unreadable_robots_txt_stops_before_any_page(
     tmp_path: Path, server: Server, clock: FakeClock, replies: list[Reply]
@@ -330,6 +341,20 @@ def test_unreadable_robots_txt_stops_before_any_page(
     with scraper, pytest.raises(RobotsUnavailableError):
         scraper.fetch(f"{BASE}/a")
     assert "/a" not in server.paths()
+
+
+def test_unreadable_robots_txt_is_requested_only_once_per_run(
+    tmp_path: Path, server: Server, clock: FakeClock
+) -> None:
+    server.route("/robots.txt", status(503))
+    scraper = make_scraper(tmp_path, server, clock)
+    with scraper, pytest.raises(RobotsUnavailableError):
+        scraper.fetch(f"{BASE}/a")
+        used = scraper.requests_used
+        with pytest.raises(RobotsUnavailableError):  # la segunda falla sin pedir nada más
+            scraper.fetch(f"{BASE}/b")
+        assert scraper.requests_used == used
+    assert server.paths().count("/robots.txt") == 1 + MAX_RETRIES  # un intento y sus reintentos
 
 
 # ---------------------------------------------------------------------------- caché
