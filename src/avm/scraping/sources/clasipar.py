@@ -54,6 +54,15 @@ URL_SCRUB_SELECTORS: Final = ("p.desc-user", 'script[type="application/ld+json"]
 # Links que NO se reemplazan: el propio portal, su CDN y el vocabulario de schema.org del JSON-LD.
 ALLOWED_URL_HOSTS: Final = ("clasipar.paraguay.com", "clasicdn.paraguay.com", "schema.org")
 
+# Tags (`span.ads_tag`) con la superficie estructurada que carga el anunciante (docs/sources.md
+# §8.4 y docs/pilot/2026-10-06.md §7). Solo estas dos etiquetas, que son inequívocas, se llevan a
+# su campo del RawListing; cualquier otra etiqueta con "superficie" queda en `attributes_raw` hasta
+# que se decida qué significa. Clave: la etiqueta en minúsculas (`casefold`).
+AREA_TAGS: Final = {
+    "superficie construida": "built_area_raw",
+    "superficie de terreno m2": "land_area_raw",
+}
+
 # Atributos que cambian sin que cambie el aviso: no entran al content_hash.
 VOLATILE_ATTRIBUTES: Final = frozenset({"patrocinado", "Nro. de Visitas"})
 SPONSORED_KEY: Final = "patrocinado"
@@ -331,8 +340,15 @@ def parse_detail(
 
     ld = next((item for item in _json_ld(tree) if item.get("@type") in _PROPERTY_TYPES), {})
     description = [_scrub(line) for line in _lines(tree.css_first("p.desc-user"))]
+    areas = {
+        AREA_TAGS[key.casefold()]: _scrub(value)
+        for key, value in tags.items()
+        if key.casefold() in AREA_TAGS
+    }
     attributes = {
-        key: _scrub(value) for key, value in tags.items() if key not in ("Dormitorios", "Baños")
+        key: _scrub(value)
+        for key, value in tags.items()
+        if key not in ("Dormitorios", "Baños") and key.casefold() not in AREA_TAGS
     }
     if "Departamento" in ficha:  # el departamento geográfico ("Central"), no el tipo de inmueble
         attributes["Departamento"] = _scrub(ficha["Departamento"])
@@ -350,8 +366,8 @@ def parse_detail(
         "description_raw": "\n".join(description) or None,
         "price_raw": _inline(tree.css_first("h3.user-price")),
         "currency_raw": None,  # va dentro del string del precio
-        "built_area_raw": None,  # nunca estructurada (sources.md §2.5): solo texto libre
-        "land_area_raw": None,
+        "built_area_raw": areas.get("built_area_raw"),  # tag "Superficie construida", si lo hay
+        "land_area_raw": areas.get("land_area_raw"),  # tag "Superficie de terreno m2", si lo hay
         "bedrooms_raw": scrubbed(tags.get("Dormitorios")),
         "bathrooms_raw": scrubbed(tags.get("Baños")),
         "garages_raw": None,
