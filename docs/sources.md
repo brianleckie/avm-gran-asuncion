@@ -49,11 +49,11 @@ La política de cookies agrega que usan cookies para "detectar patrones de naveg
   solapamiento entre las páginas 1 y 2 de casas en Asunción. Orden por defecto: "Popularidad".
 - En las 13 páginas pedidas, los 21 avisos eran siempre del tipo, la ciudad y la operación pedidos.
 
-Conteos. `total` sale de `paginatorInfo.total` (búsqueda en vivo) y "JSON-LD" del texto SEO de la
-misma página ("tenemos más de N ..."). **Los dos números no coinciden y la diferencia no va siempre
+Conteos. `paginatorInfo.total` sale de la búsqueda en vivo. "Texto SEO" sale del campo
+`description` del JSON-LD `CollectionPage` de la misma página ("tenemos más de N ..."). **Los dos números no coinciden y la diferencia no va siempre
 para el mismo lado**, así que ninguno sirve como volumen confiable sin verificarlo.
 
-| Tipo | Ciudad | `paginatorInfo.total` | JSON-LD "más de" |
+| Tipo | Ciudad | `paginatorInfo.total` | Texto SEO "más de" |
 |---|---|---:|---:|
 | casas | Asunción | 24 782 | 2 940 |
 | casas | Luque | 7 737 | 8 083 |
@@ -83,7 +83,7 @@ para el mismo lado**, así que ninguno sirve como volumen confiable sin verifica
 
 ### 1.5 Matriz de campos
 Muestra: 273 avisos únicos de los 13 listados. Paths relativos a `searchFast.data[i]`.
-"Siempre" ≥ 99 %, "a veces" entre 1 % y 98 %, "nunca" 0 %.
+"Siempre" = 100 %, "casi siempre" ≥ 98 %, "a veces" entre 1 % y 98 %, "nunca" 0 %.
 
 | Campo | Presencia | Path | Ejemplo crudo |
 |---|---|---|---|
@@ -93,7 +93,7 @@ Muestra: 273 avisos únicos de los 13 listados. Paths relativos a `searchFast.da
 | m² construidos | a veces (266/273) | `m2Built` (también `m2`) | `400` |
 | m² de terreno | a veces (152/273) | `m2Terrain` | `480` |
 | dormitorios | a veces (246/273) | `bedrooms` | `4` |
-| baños | a veces (270/273) | `bathrooms` | `5` |
+| baños | casi siempre (270/273) | `bathrooms` | `5` |
 | cocheras | a veces (195/273 no cero) | `garage` | `0` |
 | barrio | siempre presente, pero **en Central es la ciudad** (ver nota) | `locations.neighbourhood[0].name` | `"Herrera"` |
 | ciudad / departamento | siempre | `locations.state[0].name` + `neighbourhood` | `"Asunción"`, `"Central"` |
@@ -292,8 +292,8 @@ Riesgos de Clasipar:
   van con fixtures reales.
 
 InfoCasas tiene los datos más ricos (m² y coordenadas estructurados) pero su cláusula XVII lo
-prohíbe. Si el equipo quiere usarla, el camino es pedir autorización a InfoCasas S.A. como
-proyecto académico. Si la dan, el JSON embebido del listado alcanzaría sin pedir detalles.
+prohíbe. Si el equipo quiere usarla, el camino es pedir autorización a InfoCasas como proyecto
+académico (su política de privacidad, en `/faq`, nombra como responsable a "Infocasas S.A."). Si la dan, el JSON embebido del listado alcanzaría sin pedir detalles.
 
 **Pendiente:** el ROADMAP menciona "otras" fuentes; no se relevaron en esta tarea.
 
@@ -368,6 +368,13 @@ cambio lleva ADR.
   Si sirve para deduplicar (F5), se decide en F3.5 si se persiste.
 - Clasipar: si se incluye la categoría `residencias-mansiones`.
 - Relevar otras fuentes.
+- Actualizar los ADR propuestos con estos datos. No se modificaron en F3.1:
+  - ADR-003: qué fuentes exponen lat/lon y con qué precisión (§1.5, §2.5, §6.4), y si hace
+    falta un nivel de precisión "ciudad".
+  - ADR-004: moneda por fuente (§5).
+  - ADR-005: ningún `currency=None` en la muestra (§5).
+- Fixtures: el código interno al final de algunas descripciones ("ID: 38434 vf") se dejó tal cual.
+  Podría contener iniciales del agente; si el equipo lo prefiere, se reemplaza.
 
 ## Reproducir
 ```powershell
