@@ -160,8 +160,12 @@ Afecta sobre todo a **reproducir** contenido (fixtures en un repo público, publ
   `residencias-mansiones`, una categoría aparte que puede tener casas dentro del alcance
   (no relevada).
 - Ciudades: `asuncion-3`, `luque-30`, `san-lorenzo-35` y `fernando-de-la-mora-23`.
-- Paginación: `.../page-2`. Muestra 23 a 25 tarjetas por página, incluidas las de destacado y
-  premium (en casas de Asunción: 6 `box-anuncio--destacado` y 7 `box-anuncio--premium`).
+- Paginación: `.../page-2`. Cada página trae 23 a 25 tarjetas **orgánicas** y, además, de 0 a 13
+  patrocinadas (`box-anuncio--premium` o `box-anuncio--destacado`): una página llega a 37
+  tarjetas (casas de Asunción, página 1: 24 orgánicas y 13 patrocinadas, 7 premium y 6
+  destacado). En las 13 páginas: 366 tarjetas, 318 orgánicas y 48 patrocinadas (31 premium y 17
+  destacado). La versión anterior decía "23 a 25 tarjetas por página, incluidas las patrocinadas"
+  (ver §8.1).
 - En las 13 páginas pedidas, el 100 % de las tarjetas tenía la ciudad y la intención ("Vendo")
   pedidas en sus etiquetas estructuradas. Algunos títulos nombran otra ciudad (Lambaré, Itauguá):
   es una inconsistencia del anunciante, no del filtro.
@@ -178,6 +182,27 @@ Conteos ("N Resultados" visible en cada página):
 
 El total es de 10 003, sin deduplicar. Incluye avisos fuera de alcance publicados en esas
 categorías: en la muestra hubo un terreno dentro de "casas" y un local comercial con vivienda.
+
+**Detección de la última página** (verificada en las 13 páginas del crudo; lo que se ve en
+`tests/fixtures/clasipar/listado.html`, página 1 de casas de Asunción):
+- `<link rel="next" href=".../page-N+1">` en el `<head>`. Está en las 13 páginas (12 primeras y la
+  página 2 de casas de Asunción, que además trae `rel="prev"`).
+- `ul#pagination` con un `<li class="active"><a data-page="N">` (página actual) y enlaces
+  `data-page="K"` a las primeras 10 páginas y a la última. El máximo `data-page` es la última
+  página y en las 13 páginas es `ceil(Resultados / 25)` (2.773 → 111, 409 → 17, 67 → 3).
+  Los enlaces son `javascript:;` con `onclick="ads_list(K)"`: no llevan `href`, la URL
+  de la página K se arma como `.../page-K`.
+- "N Resultados" en `<p><small><strong>2.773 Resultados</strong></small></p>` (punto de miles).
+- **No verificado:** qué trae la última página (no hay captura de ninguna) ni qué responde
+  `.../page-K` pasando la última. No se asume que `rel="next"` desaparezca ahí: el parser lo usa
+  si está y cae al `data-page` activo contra el máximo.
+
+**Tarjetas patrocinadas (decisión D5).** `box-anuncio--premium` y `box-anuncio--destacado` se
+incluyen, no se descartan. Un premium puede repetirse entre páginas (uno en las páginas 1 y 2 de
+casas de Asunción), así que se deduplican por `source_id` dentro de la corrida y quedan marcadas
+en `attributes_raw` con `patrocinado` = `si` (basta con que alguna aparición lo sea). La marca
+es volátil: no entra en el `content_hash`. Que un aviso esté patrocinado no cambia su alcance;
+eso lo valida `Listing` más adelante.
 
 ### 2.4 Cómo vienen los datos
 - **No hay `__NEXT_DATA__` ni estado inicial.** Es HTML renderizado del lado del servidor.
@@ -230,6 +255,14 @@ en las páginas 1 y 2 de casas de Asunción). Los detalles son **solo 3**, así 
 
 Precisión de lat/lon: no se pudo evaluar con 2 casos. Que "Publicado el" sea la fecha original o
 la de la última republicación es **no verificado**.
+
+**Pista, NO verificada: superficie de terreno estructurada.** El filtro lateral de `/inmuebles/casas`
+tiene un rango numérico "Superficie de terreno m2" (mínimo y máximo, `data-name="taxonomy"`,
+`data-id="13"`). Eso sugiere que el portal guarda la superficie del terreno como atributo
+(opcional, que carga el anunciante), cosa que la fila de m² de la matriz da por inexistente. En
+ninguno de los 3 detalles ni de las tarjetas relevadas apareció como `span.ads_tag`, y no hay un
+filtro equivalente para la superficie construida. Se revisa en el piloto con más detalles. No
+cambia nada de lo anterior hasta entonces.
 
 ### 2.6 Datos personales
 - **Detalle:** el nombre del anunciante (persona o asesor/inmobiliaria) está en
