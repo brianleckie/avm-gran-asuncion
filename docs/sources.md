@@ -384,10 +384,12 @@ Riesgos de Clasipar:
 - **Barrio en texto libre ("Zona")**, a veces igual a la ciudad. Depende de F4.4 (gazetteer y
   fuzzy matching) y va a dejar avisos con precisión "ciudad".
 - **Calidad del dato:** 13 de 366 precios con montos bajos para una venta (criterio en §5);
-  inmuebles fuera de alcance dentro de las categorías (5 de 365 títulos mencionan local o salón
-  comercial o quinta); 7 títulos que mencionan "alquil..." en páginas con intención "Vendo" (5 de
-  ellos también dicen vender, como "alquilo o vendo"); y títulos que nombran otra ciudad. Hacen
-  falta las reglas de F4.6 y un filtro de tipo por texto.
+  inmuebles fuera de alcance dentro de las categorías (5 de 365 títulos únicos mencionan local
+  comercial, salón comercial o quinta); 7 títulos que mencionan "alquil..." o "en alquiler" en
+  páginas con intención "Vendo" (5 de ellos también dicen "vend..." o "venta", como "alquilo o
+  vendo"); y títulos que nombran otra ciudad. Los tres conteos de títulos son búsquedas de esas
+  palabras (sin distinguir mayúsculas) sobre los 365 títulos de las 13 páginas, medidas antes de
+  borrar el crudo (§8.3). Hacen falta las reglas de F4.6 y un filtro de tipo por texto.
 - **Propiedad intelectual:** no publicar descripciones ni fotos, ni el dataset crudo. Los fixtures
   se recortaron y sanitizaron. Conviene revisarlo con el tutor.
 - La marca de agua y el JSON-LD mal formado vuelven frágil al parser. Por eso los tests de F3.4
@@ -459,7 +461,8 @@ cambio lleva ADR.
 3. **Barrio opcional y crudo.** InfoCasas no da barrio en Central y Clasipar lo da como texto
    libre ("Zona"). `RawListing` debería conservar el texto crudo de ubicación (zona, dirección,
    título) para F4.4. Muchos avisos van a quedar con precisión "ciudad", un nivel que el
-   ADR-003 no contempla hoy (`barrio | aproximada | exacta`).
+   ADR-003 no contemplaba (`barrio | aproximada | exacta`); el 2026-10-06 se actualizó a los
+   cuatro niveles del contrato (§7).
 4. **lat/lon opcionales y nunca "exactas" por defecto.** InfoCasas trae coordenadas compartidas
    entre avisos y Clasipar las trae vacías a veces. Apoya el ADR-003: sin validación, como mucho
    precisión `aproximada`.
@@ -475,17 +478,20 @@ cambio lleva ADR.
 
 ## 7. Decisiones abiertas
 - InfoCasas: pedir autorización o descartarla definitivamente.
-- Nombre de la inmobiliaria (empresa, no persona): en los fixtures se reemplazó por `[NOMBRE]`.
+- Nombre de la inmobiliaria (empresa, no persona): `detalle_1`, `detalle_2` y `listado` lo
+  reemplazan por `[NOMBRE]`; `detalle_3` y la caché del scraper eliminan el bloque entero (D1).
   Si sirve para deduplicar (F5), se decide en F3.5 si se persiste.
 - Clasipar: si se incluye la categoría `residencias-mansiones`.
 - Relevar otras fuentes.
 - Actualizar los ADR propuestos con estos datos. No se modificaron en F3.1:
-  - ADR-003: qué fuentes exponen lat/lon y con qué precisión (§1.5, §2.5, §6.4), y si hace
-    falta un nivel de precisión "ciudad".
+  - ADR-003: sus niveles de `geo_precision` ya incluyen "ciudad" (2026-10-06, a revisión de
+    Oscar, ADR-006 P1). Sigue pendiente decir qué fuentes exponen lat/lon y con qué precisión
+    (§1.5, §2.5, §6.4).
   - ADR-004: moneda por fuente (§5).
   - ADR-005: ningún `currency=None` en la muestra (§5).
-- Fixtures: el código interno al final de algunas descripciones ("ID: 38434 vf") se dejó tal cual.
-  Podría contener iniciales del agente; si el equipo lo prefiere, se reemplaza.
+- Fixtures: el código interno al final de algunas descripciones ("ID: 38434 vf", "Id: 48617" y, en
+  `detalle_3`, "A:39SQEE/CP:2214004") se dejó tal cual. Podría contener iniciales del agente; si
+  el equipo lo prefiere, se reemplaza.
 
 ## 8. Correcciones posteriores a F3.1
 
@@ -539,7 +545,9 @@ slugs de anunciantes extraídos del crudo no quedó ninguno (las únicas 9 coinc
 
 Se conservan `ledger.json`, `robots.txt` y los `*.meta.json` (URL, status y headers de cada
 request, sin cuerpo). Consecuencia: `recon.validate_parsers` ya no puede volver a correr sobre el
-crudo local; las cifras de §5 y de §8.1 son el registro. Los fixtures de `tests/fixtures/clasipar/`
+crudo local; las cifras de §2.3, §2.5, §4, §5 y §8.1 son el registro: se midieron antes de
+borrarlo (en §2.3, que las 13 páginas traen `rel="next"` y que la página 2 de casas de Asunción
+trae también `rel="prev"`) y ya no se pueden reproducir. Los fixtures de `tests/fixtures/clasipar/`
 y los conteos agregados de las 13 páginas (366 tarjetas, 48 patrocinadas, 365 únicas) quedan como
 referencia. `recon.fetch` sanitiza antes de escribir.
 
