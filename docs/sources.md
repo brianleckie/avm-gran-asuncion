@@ -284,6 +284,70 @@ cambia nada de lo anterior hasta entonces.
 - El token en `POST /src/async/request`.
 - No se vio ningún challenge, captcha bloqueante ni 429 en 22 requests a 6 s.
 
+### 2.8 Selectores implementados (F3.4)
+Los implementa `src/avm/scraping/sources/clasipar.py` y los verifican `tests/scraping/sources/
+test_clasipar.py` contra los fixtures de `tests/fixtures/clasipar/`. Vale para el HTML sanitizado
+de la caché y para el crudo: sanitizar no cambia lo que se extrae (comprobado sobre las 13 páginas
+de listado y los 3 detalles).
+
+**Tarjeta del listado** (`article.box-anuncio`; también las que traen `box-anuncio--premium` o
+`box-anuncio--destacado`, que van en cualquier orden dentro de `class`):
+
+| Dato | Selector |
+|---|---|
+| URL y `source_id` | `a.titAnuncio` → `href` (absoluto); el `source_id` es su sufijo numérico |
+| `title_raw` | texto de `a.titAnuncio` |
+| `price_raw` | `p.price` (el texto, sin interpretar: "Consultar precio." queda tal cual) |
+| `operation_raw` | primer `<strong>` de `h6` ("Vendo") |
+| `advertiser_type_raw` | segundo `<strong>` de `h6`, el de "Ofrecido por:" ("Inmobiliaria" o "Particular") |
+| patrocinada | `class` con `box-anuncio--premium` o `box-anuncio--destacado` |
+
+**Paginación**: `link[rel="next"]` (URL de la página siguiente), `ul#pagination li.active
+a[data-page]` (página actual), el mayor `a[data-page]` de `ul#pagination` (última página) y
+`small strong` con el texto "N Resultados" (punto de miles). Detalle y límites en §2.3.
+
+**Detalle del aviso** (`parse_detail`):
+
+| Campo de `RawListing` | Dónde sale |
+|---|---|
+| `source_id` | ficha "Nro. de Anuncio:"; si falta, el sufijo numérico de la URL; si ambos están y difieren, error |
+| `title_raw` | `h1.tit-anuncio` |
+| `description_raw` | `p.desc-user`, una línea por `<br>`, sin líneas vacías |
+| `price_raw` | `h3.user-price` |
+| `bedrooms_raw`, `bathrooms_raw` | `span.ads_tag` "Dormitorios" y "Baños" (el `<strong>`). El JSON-LD `numberOfRooms` y `numberOfBathroomsTotal` no se usan: su significado no está verificado |
+| `city_raw`, `neighborhood_raw`, `published_at_raw` | ficha "Ciudad:", "Zona" y "Publicado el:" (`dd/mm/aaaa`, sin interpretar) |
+| `latitude_raw`, `longitude_raw` | JSON-LD `House` o `Apartment`: `latitude` y `longitude`; vacíos (`""`) → `None` |
+| `property_type_raw` | categoría de la URL (`/inmuebles/{categoria}/…`: `casas`, `departamentos`, `duplex`); si la URL no la trae, el breadcrumb JSON-LD (posición 2, "Inmuebles / Departamentos" → "Departamentos") |
+| `operation_raw`, `advertiser_type_raw` | **no están en el detalle**: se toman de la tarjeta (`ListingRef`). Los "VENDO / DOY EN ALQUILER" y "Ofrecido por:" que aparecen en el detalle son de 3 avisos relacionados (la casa de Asunción muestra dos alquileres y un terreno) y de una plantilla JS; leerlos daría el dato de otro aviso |
+| `attributes_raw` | los demás `span.ads_tag` ("Habitación en suite", "Piscina", "Quincho"...), la ficha "Departamento:" (el departamento geográfico, "Central") y `patrocinado` = `si` si alguna tarjeta del aviso lo era. **No** "Nro. de Visitas" (volátil) |
+| `currency_raw`, `built_area_raw`, `land_area_raw`, `garages_raw`, `address_raw` | no existen en la fuente como campo propio (§2.5): quedan en `None` |
+
+- **Marca de agua**: se descarta por estilo (`span[style*="font-size:0"]`), no por clase, porque la
+  clase cambia en cada página.
+- **JSON-LD**: se lee con `json.loads(..., strict=False)`; si no se puede leer, se ignora.
+- **Datos personales (D3)**: todo texto pasa por `scrub_contacts` (teléfonos, emails y WhatsApp →
+  `[TELEFONO]`, `[EMAIL]`, `[WHATSAPP]`) y `scrub_urls` (links a sitios de terceros → `[URL]`) antes
+  de construir el `RawListing`. El nombre del anunciante nunca se extrae.
+- **`content_hash` (D2)**: sha256 de un JSON canónico (claves ordenadas, UTF-8, separadores `,` y
+  `:` sin espacios) con todos los campos del `RawListing` salvo `scraped_at`, `content_hash` y los
+  atributos volátiles (`patrocinado` y "Nro. de Visitas"). Dos requests del mismo aviso sin
+  cambios reales dan el mismo hash. La descripción del campo en `raw_listing.py` dice "contenido
+  crudo"; el contrato no se tocó, y esta es la definición vigente.
+
+**Sanitizado de la caché (D1)** (`sanitize_clasipar_html`): se eliminan `.infoAnunciante__header`
+(nombre, foto o logo y perfil), `.infoAnunciante__datos` (formulario con teléfono y email
+enmascarados), `span.box-anuncio__logo` y todo `a[href*="/empresa/"]`; las imágenes `/corporate/`
+y `/users/`; los `<script>` (salvo JSON-LD), `<style>`, `<svg>`, `<iframe>`, `<noscript>` y
+comentarios. En la descripción, el JSON-LD y los `<meta>` se reemplazan por `[URL]` los links a
+hosts que no son del portal (`clasipar.paraguay.com`, `clasicdn.paraguay.com`, `schema.org`); los
+`href` y `src` del resto del HTML no se tocan. Se reemplazan contactos y, si queda un rastro
+(`/empresa/`, `/corporate/`, `/users/` o un contacto), la página no se escribe (falla cerrado).
+- El detalle 2214004 traía el link al sitio de la inmobiliaria en la descripción, repetido en el
+  JSON-LD. Ahí el portal reescribe los links sin las barras (`https:sitio…`): `scrub_urls` también
+  esa forma.
+- **No se puede detectar**: un nombre de persona escrito en el título o la descripción, ni un
+  dominio sin esquema ("sitio.com.py"). Hay que revisar los fixtures a mano.
+
 ---
 
 ## 3. Tabla comparativa
@@ -463,6 +527,22 @@ Las otras 37 separaciones entre requests consecutivas del ledger (las dos fuente
 cliente `scripts/recon/client.py` nunca reintenta. `BaseScraper` (F3.2) solo reintenta timeouts y
 5xx, y respeta siempre la demora mínima.
 
+### 8.3 Crudo de Clasipar borrado (2026-10-06)
+Los `data/raw/recon/clasipar/*.body` (20 páginas: home, reglas, advertencia legal, 14 de listado y 3
+de detalle) se borraron, igual que con InfoCasas: guardaban las páginas tal como llegaron, con
+110 links `/empresa/<nombre>` y los bloques de anunciante de los 3 detalles. CLAUDE.md no permite
+persistir nombres de agentes y desde esta fecha la caché se escribe sanitizada (D1). Antes de
+borrarlos se verificó que `sanitize_clasipar_html` elimina esos datos en las 17 páginas con
+anuncios: no quedó ningún `/empresa/`, `/corporate/`, `/users/` ni contacto, y de los 47 nombres y
+slugs de anunciantes extraídos del crudo no quedó ninguno (las únicas 9 coincidencias fueron el
+`alt="sin foto"` de una imagen genérica).
+
+Se conservan `ledger.json`, `robots.txt` y los `*.meta.json` (URL, status y headers de cada
+request, sin cuerpo). Consecuencia: `recon.validate_parsers` ya no puede volver a correr sobre el
+crudo local; las cifras de §5 y de §8.1 son el registro. Los fixtures de `tests/fixtures/clasipar/`
+y los conteos agregados de las 13 páginas (366 tarjetas, 48 patrocinadas, 365 únicas) quedan como
+referencia. `recon.fetch` sanitiza antes de escribir.
+
 ## Reproducir
 ```powershell
 $env:PYTHONPATH = "scripts"
@@ -472,5 +552,7 @@ uv run python -m recon.validate_parsers clasipar [--ver]
 $env:PYTHONPATH = "scripts"
 uv run python -m recon.sanitize clasipar <crudo>=<fixture> ...
 ```
-El crudo y el ledger de requests quedan en `data/raw/recon/` (gitignored). El ledger tiene
-InfoCasas marcada como bloqueada, así que el cliente rechaza cualquier request nueva a esa fuente.
+El ledger de requests queda en `data/raw/recon/` (gitignored). El ledger tiene InfoCasas marcada
+como bloqueada, así que el cliente rechaza cualquier request nueva a esa fuente. Desde §8.3 el
+crudo de Clasipar ya no existe y `recon.fetch` guarda las páginas sanitizadas; el validador solo
+sirve sobre páginas que se vuelvan a pedir. Para scrapear se usa `avm.scraping.base.BaseScraper`.
