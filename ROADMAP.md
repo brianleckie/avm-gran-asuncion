@@ -34,7 +34,7 @@
 - [ ] F1.7 (B) Validación por lotes (pandera o pydantic) y tests de contrato
 - [ ] F1.8 (B/O) Versionado: `CONTRACT_VERSION` semántico. Un cambio que rompe compatibilidad requiere ADR más migración
 
-→ propuesta v0.1.0 en PR, pendiente revisión de Oscar (ADR-006 con preguntas abiertas; FeatureRow diferido hasta F6.4)
+→ v0.1.0 en main (PR #5), pendiente revisión de Oscar
 
 ## F2 — Datos sintéticos (desbloquea modelado en paralelo)
 - [ ] F2.1 (O) Gazetteer provisorio de barrios por ciudad, como lista inicial

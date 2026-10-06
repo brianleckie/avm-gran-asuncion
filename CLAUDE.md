@@ -10,6 +10,7 @@ El roadmap completo está en `ROADMAP.md`. Cada tarea tiene un ID (`F3.2`). Trab
 - **El contrato manda.** `src/avm/contract/` es la fuente de verdad. No modifiques schemas sin que te lo pida explícitamente y sin un ADR en `docs/adr/`.
 - **Cero leakage.** Splits por `cluster_id`. Target encoding y cualquier estadística del target se calculan solo dentro del fold de entrenamiento.
 - **Scraping ético.** Rate limit ≥ 2 s entre requests, respetar robots.txt y user-agent identificable. **Nunca persistas teléfonos, nombres de agentes ni emails.**
+- **La caché de HTML se escribe sanitizada:** nunca se persiste HTML crudo con datos de anunciantes.
 - **No inventes números.** Ninguna métrica, cifra de mercado ni referencia bibliográfica que no salga del código o de una fuente que te pasemos. Si falta un dato, decilo.
 
 ## Stack
