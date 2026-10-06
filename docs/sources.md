@@ -4,8 +4,9 @@ Relevamiento hecho el 5 de octubre de 2026 (hora de Paraguay) desde una IP resid
 `scripts/recon/`. No es un scraping: son pocas páginas para documentar qué ofrece cada portal.
 
 - User-agent: `AVM-GranAsuncion-Academic/0.1 (proyecto universitario; contacto: https://github.com/brianleckie)`.
-- 6 s entre requests, una a la vez, sin reintentos, tope de 25 requests por fuente (las fallidas
-  también cuentan). Las URLs se validaron contra robots.txt antes de pedirlas.
+- 6 s entre requests, una a la vez, tope de 25 requests por fuente (las fallidas también cuentan)
+  y sin reintentos, salvo el `robots.txt` de la compuerta de red (ver §8.2). Las URLs se validaron
+  contra robots.txt antes de pedirlas.
 - Requests usadas: **InfoCasas 19/25** (frenada por sus ToS, ver abajo) y **Clasipar 22/25**.
   No hubo ningún 403, 429 ni challenge.
 - Todo lo que sigue sale de esas páginas. Lo que no se vio se marca como "no relevado". Los
@@ -445,6 +446,22 @@ El "17" original no se puede reproducir: no documentó su criterio y sus ejemplo
 montos de la página genérica (por ejemplo `Gs. 1.500.000`, que es un monto de alquiler). Las
 cifras de InfoCasas no cambian. ADR-006 (Consecuencias) y el ROADMAP (F4.1) citaban las cifras
 anteriores y se actualizaron.
+
+### 8.2 Reintento de robots.txt en la compuerta (2026-10-06)
+El ledger local (`data/raw/recon/ledger.json`) abre con cuatro entradas de `robots.txt`, dos por
+fuente. La primera de cada fuente tiene status `null` y la nota "compuerta, intento 1: respuesta
+no guardada por error de escritura local"; la segunda, status 200 y la nota "compuerta". Lo que se
+puede reconstruir: la compuerta de red pidió el `robots.txt` de cada fuente, según la nota no pudo
+guardar la respuesta por un error local de escritura y lo volvió a pedir una vez. Las cuatro
+entradas tienen el mismo `ts`, así que **el ledger no permite saber cuánto pasó entre el intento y
+el reintento**: pudo ser menos de 2 s (el mínimo de CLAUDE.md) y no se puede afirmar ni descartar.
+El repo no tiene un script de esa compuerta (solo la mencionan `scripts/recon/fetch.py` y un
+comentario de `tests/recon/test_robots.py`), así que no hay código que revisar.
+
+Las otras 37 separaciones entre requests consecutivas del ledger (las dos fuentes, ordenadas por
+`ts`) son de 7,7 s o más. Es decir, "sin reintentos" valió para todo salvo este caso, y el
+cliente `scripts/recon/client.py` nunca reintenta. `BaseScraper` (F3.2) solo reintenta timeouts y
+5xx, y respeta siempre la demora mínima.
 
 ## Reproducir
 ```powershell
