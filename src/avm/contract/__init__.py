@@ -17,6 +17,7 @@ from avm.contract.enums import (
     StreetSurface,
     WarningCode,
 )
+from avm.contract.listing import Listing
 from avm.contract.raw_listing import RawListing
 from avm.contract.version import CONTRACT_VERSION
 
@@ -27,6 +28,7 @@ __all__ = [
     "CoordinateFlag",
     "Currency",
     "GeoPrecision",
+    "Listing",
     "NeighborhoodMatch",
     "OperationType",
     "PropertyType",
