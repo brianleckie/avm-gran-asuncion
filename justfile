@@ -14,14 +14,16 @@ install:
 # Corre los tests y exige ≥ 95 % de cobertura (líneas y ramas) en CADA módulo con umbral. Se mide por
 # módulo y no sobre el total, porque un total combinado puede esconder un módulo flojo detrás de otro
 # al 100 %. `coverage report` sale con error si el módulo no tiene datos o queda bajo el umbral.
-# Excepción: avm.contract se mide como paquete (son varios archivos chicos de schemas). Las comillas
-# del glob evitan que sh lo expanda en Ubuntu; PowerShell las quita antes de pasarlo.
+# Excepción: avm.contract y avm.scraping se miden como paquete (son varios archivos chicos). Las
+# comillas del glob evitan que sh lo expanda en Ubuntu; PowerShell las quita antes de pasarlo. Un
+# solo `*` no cruza directorios: avm.scraping lista aparte su subpaquete `sources`.
 test:
-    uv run pytest --cov=avm.pipeline.parsing --cov=avm.model.metrics --cov=avm.model.splits --cov=avm.contract --cov-branch --cov-report=
+    uv run pytest --cov=avm.pipeline.parsing --cov=avm.model.metrics --cov=avm.model.splits --cov=avm.contract --cov=avm.scraping --cov-branch --cov-report=
     uv run coverage report --show-missing --include=src/avm/pipeline/parsing.py --fail-under=95
     uv run coverage report --show-missing --include=src/avm/model/metrics.py --fail-under=95
     uv run coverage report --show-missing --include=src/avm/model/splits.py --fail-under=95
     uv run coverage report --show-missing --include="src/avm/contract/*" --fail-under=95
+    uv run coverage report --show-missing --include="src/avm/scraping/*,src/avm/scraping/sources/*" --fail-under=95
 
 # Análisis estático: ruff (lint + formato) y mypy estricto sobre src/avm/contract
 lint:
