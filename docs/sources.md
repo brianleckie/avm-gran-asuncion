@@ -238,8 +238,8 @@ en las páginas 1 y 2 de casas de Asunción). Los detalles son **solo 3**, así 
 |---|---|---|---|
 | precio | tarjeta: siempre (1/366 "Consultar precio."); detalle 3/3 | `p.price`, `h3.user-price` | `US$. 235.000,00` |
 | moneda | dentro del string del precio: `US$.` o `Gs.` | idem | `Gs. 1.200.000.000` |
-| m² construidos | **nunca estructurado**; a veces en título o descripción | texto libre | `Construcción: 90 m²` |
-| m² de terreno | **nunca estructurado**; a veces en texto | texto libre | `Terreno: 180 m²` |
+| m² construidos | a veces como tag estructurado (54 de 227 detalles del piloto, §8.4) y, si no, en título o descripción | `span.ads_tag` "Superficie construida" o texto libre | `120` (el tag trae el número solo) |
+| m² de terreno | a veces como tag estructurado (51 de 227 detalles del piloto, §8.4) y, si no, en texto | `span.ads_tag` "Superficie de terreno m2" o texto libre | `360` |
 | dormitorios | detalle: a veces (tag 2/3; JSON-LD 2/3) | `span.ads_tag` "Dormitorios", `$.numberOfRooms` | `"2"` |
 | baños | detalle: a veces (1/3) | tag "Baños", `$.numberOfBathroomsTotal` | `"1"` |
 | cocheras | detalle: no visto estructurado (0/3); a veces en texto | descripción | — |
@@ -257,13 +257,7 @@ en las páginas 1 y 2 de casas de Asunción). Los detalles son **solo 3**, así 
 Precisión de lat/lon: no se pudo evaluar con 2 casos. Que "Publicado el" sea la fecha original o
 la de la última republicación es **no verificado**.
 
-**Pista, NO verificada: superficie de terreno estructurada.** El filtro lateral de `/inmuebles/casas`
-tiene un rango numérico "Superficie de terreno m2" (mínimo y máximo, `data-name="taxonomy"`,
-`data-id="13"`). Eso sugiere que el portal guarda la superficie del terreno como atributo
-(opcional, que carga el anunciante), cosa que la fila de m² de la matriz da por inexistente. En
-ninguno de los 3 detalles ni de las tarjetas relevadas apareció como `span.ads_tag`, y no hay un
-filtro equivalente para la superficie construida. Se revisa en el piloto con más detalles. No
-cambia nada de lo anterior hasta entonces.
+**Superficie estructurada: verificada en el piloto de F3.3 (§8.4).** El filtro lateral de `/inmuebles/casas` tiene un rango "Superficie de terreno m2" y el detalle sí trae la superficie como tags `span.ads_tag`: "Superficie construida" (54 de 227 detalles) y "Superficie de terreno m2" (51), con el número solo. Es un dato opcional que carga el anunciante. Los 3 detalles de F3.1 no lo traían, por eso la versión anterior de esta matriz lo daba por inexistente.
 
 ### 2.6 Datos personales
 - **Detalle:** el nombre del anunciante (persona o asesor/inmobiliaria) está en
@@ -320,7 +314,8 @@ a[data-page]` (página actual), el mayor `a[data-page]` de `ul#pagination` (últ
 | `property_type_raw` | categoría de la URL (`/inmuebles/{categoria}/…`: `casas`, `departamentos`, `duplex`); si la URL no la trae, el breadcrumb JSON-LD (posición 2, "Inmuebles / Departamentos" → "Departamentos") |
 | `operation_raw`, `advertiser_type_raw` | **no están en el detalle**: se toman de la tarjeta (`ListingRef`). Los "VENDO / DOY EN ALQUILER" y "Ofrecido por:" que aparecen en el detalle son de 3 avisos relacionados (la casa de Asunción muestra dos alquileres y un terreno) y de una plantilla JS; leerlos daría el dato de otro aviso |
 | `attributes_raw` | los demás `span.ads_tag` ("Habitación en suite", "Piscina", "Quincho"...), la ficha "Departamento:" (el departamento geográfico, "Central") y `patrocinado` = `si` si alguna tarjeta del aviso lo era. **No** "Nro. de Visitas" (volátil) |
-| `currency_raw`, `built_area_raw`, `land_area_raw`, `garages_raw`, `address_raw` | no existen en la fuente como campo propio (§2.5): quedan en `None` |
+| `currency_raw`, `garages_raw`, `address_raw` | no existen en la fuente como campo propio (§2.5): quedan en `None` |
+| `built_area_raw`, `land_area_raw` | **hoy quedan en `None`**, pero el piloto mostró que los tags `Superficie construida` y `Superficie de terreno m2` existen (§8.4); por ahora van a `attributes_raw`. Pendiente: llevarlos a estos campos |
 
 - **Marca de agua**: se descarta por estilo (`span[style*="font-size:0"]`), no por clase, porque la
   clase cambia en cada página.
@@ -331,8 +326,8 @@ a[data-page]` (página actual), el mayor `a[data-page]` de `ul#pagination` (últ
 - **`content_hash` (D2)**: sha256 de un JSON canónico (claves ordenadas, UTF-8, separadores `,` y
   `:` sin espacios) con todos los campos del `RawListing` salvo `scraped_at`, `content_hash` y los
   atributos volátiles (`patrocinado` y "Nro. de Visitas"). Dos requests del mismo aviso sin
-  cambios reales dan el mismo hash. La descripción del campo en `raw_listing.py` dice "contenido
-  crudo"; el contrato no se tocó, y esta es la definición vigente.
+  cambios reales dan el mismo hash. La descripción del campo en `raw_listing.py` decía "contenido
+  crudo"; se corrigió en el contrato 0.1.1 (PATCH, solo documentación) y ahora dice esta definición.
 
 **Sanitizado de la caché (D1)** (`sanitize_clasipar_html`): se eliminan `.infoAnunciante__header`
 (nombre, foto o logo y perfil), `.infoAnunciante__datos` (formulario con teléfono y email
@@ -358,7 +353,7 @@ hosts que no son del portal (`clasipar.paraguay.com`, `clasicdn.paraguay.com`, `
 | ToS sobre acceso automatizado | **prohibido expresamente (XVII)** | no lo menciona; prohíbe reproducir contenido |
 | Formato | JSON embebido completo (`__NEXT_DATA__`) + GraphQL | HTML + JSON-LD mal formado e incompleto |
 | Precio y moneda | estructurados (`amount` + `currency`) | string (`US$. 235.000,00`) |
-| m² construidos / terreno | estructurados (97 % / 56 %) | solo texto libre |
+| m² construidos / terreno | estructurados (97 % / 56 %) | texto libre y, a veces, tag estructurado (§8.4) |
 | Barrio | estructurado en Asunción; **en Central es la ciudad** | "Zona", texto libre |
 | lat/lon | 272/273, precisión dudosa (coordenadas compartidas) | 2/3 en JSON-LD |
 | Datos personales | teléfono WhatsApp completo en el JSON del listado | nombres en HTML; contacto enmascarado |
@@ -378,9 +373,8 @@ Fundamentos:
    Asunción > Luque > Fernando de la Mora ≈ San Lorenzo.
 
 Riesgos de Clasipar:
-- **La superficie viene solo en texto libre.** Esto pega en el target (USD/m²): habrá avisos sin
-  m² o con m² ambiguos (construida vs. terreno). Cuántos: no medible con 3 detalles, se mide en
-  F3.4/F4.3.
+- **La superficie viene sobre todo en texto libre.** Esto pega en el target (USD/m²): habrá avisos sin
+  m² o con m² ambiguos (construida vs. terreno). El piloto de F3.3 lo midió (§8.4 y `docs/pilot/2026-10-06.md`).
 - **Barrio en texto libre ("Zona")**, a veces igual a la ciudad. Depende de F4.4 (gazetteer y
   fuzzy matching) y va a dejar avisos con precisión "ciudad".
 - **Calidad del dato:** 13 de 366 precios con montos bajos para una venta (criterio en §5);
@@ -550,6 +544,25 @@ borrarlo (en §2.3, que las 13 páginas traen `rel="next"` y que la página 2 de
 trae también `rel="prev"`) y ya no se pueden reproducir. Los fixtures de `tests/fixtures/clasipar/`
 y los conteos agregados de las 13 páginas (366 tarjetas, 48 patrocinadas, 365 únicas) quedan como
 referencia. `recon.fetch` sanitiza antes de escribir.
+
+### 8.4 Piloto de F3.3: superficie estructurada y comportamiento de la fuente (2026-10-06)
+El piloto (`docs/pilot/2026-10-06.md`, solo agregados) pidió 253 requests en 31,0 min: robots.txt, 24
+listados y 228 detalles (12 búsquedas × 19, seed 42).
+- **Bloqueos y latencia:** ningún 403, 429 ni challenge. Latencia de 0,90 s de media (p95 de 1,77 s,
+  máximo de 5,69 s), sin contar la espera de 6 s más el jitter entre requests.
+- **Un detalle respondió 301** y no se siguió (`BaseScraper` no sigue redirecciones): quedó contado
+  como error del pedido. 227 de 228 detalles dieron un `RawListing` válido, 0 rechazados.
+- **Superficie estructurada.** Los `span.ads_tag` "Superficie construida" y "Superficie de terreno
+  m2" existen: 54 y 51 de los 227 detalles (23,8 % y 22,5 %), con el número solo. En departamentos
+  solo aparece el de superficie construida (14 de 76) y en casas y dúplex se ven los dos. La ficha
+  (`.anuncio-detalles`) y el JSON-LD no traen ninguna etiqueta de superficie (0 de 227). El parser los
+  deja en `attributes_raw`. Esto corrige la matriz de §2.5 (que daba la superficie por "nunca
+  estructurada" con 3 detalles), §2.8, §3 y §4.
+- **Documentos que todavía dicen "solo texto libre":** el ADR-006 (Contexto y Consecuencias, una
+  propuesta pendiente de revisión de Oscar Arce). No se modificó acá: conviene actualizarlo al revisar
+  la pregunta P13, que depende de este dato.
+- **Volumen declarado:** Σ de "N Resultados" en las 12 búsquedas = 10 093 (era 10 003 el 5/10, §2.3),
+  sin deduplicar.
 
 ## Reproducir
 ```powershell

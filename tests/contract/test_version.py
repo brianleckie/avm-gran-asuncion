@@ -8,7 +8,7 @@ from avm.contract import CONTRACT_VERSION, City, OperationType, PropertyType
 
 def test_contract_version_is_semver_and_exported() -> None:
     assert re.fullmatch(r"\d+\.\d+\.\d+", CONTRACT_VERSION)
-    assert CONTRACT_VERSION == "0.1.0"
+    assert CONTRACT_VERSION == "0.1.1"
     assert "CONTRACT_VERSION" in contract.__all__
 
 

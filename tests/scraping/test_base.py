@@ -69,6 +69,7 @@ class Server:
 
     def __init__(self, clock: FakeClock) -> None:
         self.clock = clock
+        self.latency = 0.0  # lo que "tarda" cada respuesta: avanza el reloj falso
         self.calls: list[tuple[str, float]] = []
         self.headers: list[httpx.Headers] = []
         self.routes: dict[str, list[Reply]] = {
@@ -84,6 +85,7 @@ class Server:
     def __call__(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
         self.calls.append((path, self.clock.now))
+        self.clock.now += self.latency
         self.headers.append(request.headers)
         queue = self.routes.get(path)
         reply: Reply = ok()
@@ -550,7 +552,7 @@ def test_log_and_manifest_are_well_formed(tmp_path: Path, server: Server, clock:
         ("/app/x", "robots"),
     ]
     for entry in lines:
-        assert set(entry) == {"url", "status", "ts", "bytes", "result"}
+        assert set(entry) == {"url", "status", "ts", "bytes", "result", "duration_s"}
         assert entry["ts"].endswith("+00:00")
     assert lines[1]["status"] == 200 and lines[1]["bytes"] == len(PAGE.encode())
     assert lines[2]["status"] is None and lines[4]["bytes"] == 0
@@ -564,6 +566,88 @@ def test_log_and_manifest_are_well_formed(tmp_path: Path, server: Server, clock:
     assert manifest["blocked"] is False and manifest["blocked_reason"] is None
     assert manifest["contract_version"] == CONTRACT_VERSION
     assert manifest["user_agent"] == USER_AGENT and manifest["min_delay_s"] == MIN_DELAY_S
+
+
+def read_log(tmp_path: Path) -> list[dict[str, Any]]:
+    path = tmp_path / "2026-10-06" / "portal" / "requests.jsonl"
+    return [json.loads(line) for line in path.read_text("utf-8").splitlines()]
+
+
+def test_the_log_records_the_duration_of_every_request_sent(
+    tmp_path: Path, server: Server, clock: FakeClock
+) -> None:
+    server.latency = 0.25
+    server.route("/b", status(404))
+    with make_scraper(tmp_path, server, clock) as scraper:
+        scraper.fetch(f"{BASE}/a")
+        scraper.fetch(f"{BASE}/b")
+    log = read_log(tmp_path)
+    # robots.txt, /a (ok) y /b (error): las tres se enviaron y tardaron lo que tardó el transporte.
+    assert [(entry["result"], entry["duration_s"]) for entry in log] == [
+        ("ok", 0.25),
+        ("ok", 0.25),
+        ("error", 0.25),
+    ]
+
+
+def test_cache_hits_and_robots_refusals_have_no_duration(
+    tmp_path: Path, server: Server, clock: FakeClock
+) -> None:
+    server.latency = 0.5
+    with make_scraper(tmp_path, server, clock) as scraper:
+        scraper.fetch(f"{BASE}/a")
+        scraper.fetch(f"{BASE}/a")  # caché
+        scraper.fetch(f"{BASE}/app/x")  # prohibida por robots.txt: no se envía
+    assert [(entry["result"], entry["duration_s"]) for entry in read_log(tmp_path)] == [
+        ("ok", 0.5),
+        ("ok", 0.5),
+        ("cache", None),
+        ("robots", None),
+    ]
+
+
+def test_the_duration_excludes_the_wait_between_requests(
+    tmp_path: Path, server: Server, clock: FakeClock
+) -> None:
+    server.latency = 0.1
+    with make_scraper(tmp_path, server, clock) as scraper:
+        scraper.fetch(f"{BASE}/a")
+        scraper.fetch(f"{BASE}/b")
+    assert clock.sleeps  # hubo espera entre requests (>= 6 s) y no entra en la duración
+    assert {entry["duration_s"] for entry in read_log(tmp_path)} == {0.1}
+
+
+def test_retries_and_blocks_log_their_duration_too(
+    tmp_path: Path, server: Server, clock: FakeClock
+) -> None:
+    server.latency = 0.2
+    server.route("/a", status(503), status(503), ok())
+    server.route("/b", status(429))
+    with pytest.raises(BlockedError), make_scraper(tmp_path, server, clock) as scraper:
+        scraper.fetch(f"{BASE}/a")
+        scraper.fetch(f"{BASE}/b")
+    log = read_log(tmp_path)
+    assert [entry["result"] for entry in log] == ["ok", "error", "error", "ok", "bloqueado"]
+    assert all(entry["duration_s"] == 0.2 for entry in log)
+
+
+def test_counts_and_latencies_are_exposed_read_only(
+    tmp_path: Path, server: Server, clock: FakeClock
+) -> None:
+    server.latency = 0.3
+    with make_scraper(tmp_path, server, clock) as scraper:
+        assert scraper.counts == {
+            outcome: 0 for outcome in ("ok", "cache", "robots", "bloqueado", "error")
+        }
+        assert scraper.latencies_s == ()
+        scraper.fetch(f"{BASE}/a")
+        scraper.fetch(f"{BASE}/a")
+        assert scraper.counts["ok"] == 2 and scraper.counts["cache"] == 1
+        assert scraper.latencies_s == pytest.approx(
+            (0.3, 0.3)
+        )  # robots.txt y /a; la caché no envía
+        scraper.counts["ok"] = 99  # es una copia
+        assert scraper.counts["ok"] == 2
 
 
 def test_the_default_clock_is_utc_aware(tmp_path: Path, server: Server, clock: FakeClock) -> None:

@@ -35,6 +35,7 @@
 - [ ] F1.8 (B/O) Versionado: `CONTRACT_VERSION` semántico. Un cambio que rompe compatibilidad requiere ADR más migración
 
 → v0.1.0 en main (PR #5), pendiente revisión de Oscar
+→ v0.1.1 (PATCH, solo documentación): la descripción de `RawListing.content_hash` dice lo que hace el parser (D2); historial en el punto 16 del ADR-006
 
 ## F2 — Datos sintéticos (desbloquea modelado en paralelo)
 - [ ] F2.1 (O) Gazetteer provisorio de barrios por ciudad, como lista inicial
@@ -48,26 +49,33 @@
   → los ToS de InfoCasas (cláusula XVII) prohíben bots y scrapers: se frenó tras 19 requests, sin fixtures, y queda descartada salvo permiso escrito. Se prioriza Clasipar (ToS sin cláusula anti-bot, pero prohíben reproducir contenido: no publicar el crudo). "Otras" fuentes no se relevaron. Cliente de reconocimiento en `scripts/recon/` (6 s entre requests, tope de 25 por fuente)
 - [x] F3.2 (B) `BaseScraper`: httpx, rate limit de 1 req cada 6 s más jitter, retries con backoff, user-agent identificable, caché de HTML en disco (sanitizado)
   → `src/avm/scraping/base.py`. Una request a la vez con 6 s más un jitter de 0 a 1 s (solo configurable hacia más conservador), presupuesto de requests obligatorio y duro, robots.txt con `urllib.robotparser` (no entiende comodines `*` ni `$`: Clasipar no los usa), 403, 429 o challenge detienen la corrida, reintentos solo de timeouts y 5xx (máximo 2). Decisiones: **D1** la caché se escribe sanitizada (sin teléfonos, emails, WhatsApp, nombres de anunciantes, slugs `/empresa/`, logos ni links a sitios de terceros), nunca HTML crudo; falla cerrado. **D3** el parser sanitiza antes de construir el `RawListing` (el contrato queda de red de seguridad). **D4** `httpx` y `selectolax` son dependencias de runtime. El registro (`requests.jsonl`) y el `manifest.json` son por fuente y snapshot: `data/raw/<fecha>/<fuente>/`
+  → F3.3 suma `duration_s` (lo que tardó el intercambio HTTP, sin la demora) a cada línea de `requests.jsonl` y expone `counts` y `latencies_s` en `BaseScraper`
 - [ ] F3.3 (B) Crawler de listados → URLs de avisos, filtrados por venta, tipo y ciudad
-  → hecha la parte pura (`search_urls`, `page_url` y `merge_refs` en `sources/clasipar.py`); falta el loop que recorre las páginas con `BaseScraper`. **D5**: las tarjetas patrocinadas se incluyen, se deduplican por `source_id` dentro de la corrida y se marcan en `attributes_raw` con `patrocinado` = `si`
+  → hecha la parte pura (`search_urls`, `page_url` y `merge_refs` en `sources/clasipar.py`); el loop que recorre las páginas con `BaseScraper` es el modo piloto de abajo. **D5**: las tarjetas patrocinadas se incluyen, se deduplican por `source_id` dentro de la corrida y se marcan en `attributes_raw` con `patrocinado` = `si`
+  → modo piloto (muestreo) hecho; crawl exhaustivo pendiente. `src/avm/scraping/crawl.py` y `python -m avm.scraping.run` (`just scrape <fuente> <presupuesto> <por_búsqueda> <seed>`, los 4 obligatorios): por búsqueda, la página 1 más UNA página aleatoria, muestreo sin reposición con un rng por búsqueda derivado del seed y detalles intercalados (round-robin). `BlockedError` corta todo y sale con código 3. Piloto del 2026-10-06 (seed 42, 12 búsquedas × 19): 253 requests, 227 de 228 detalles válidos, ningún 403, 429 ni challenge, 31,0 min, latencia media de 0,90 s por request. Reporte, solo con agregados: `docs/pilot/2026-10-06.md`. Falta recorrer todas las páginas; el modo incremental es F3.6
 - [x] F3.4 (B) Parser por fuente → `RawListing`. **Tests con fixtures HTML guardados**, porque los selectores se rompen
   → solo Clasipar (InfoCasas descartada): `src/avm/scraping/sources/clasipar.py`, con selectores en `docs/sources.md` §2.8 y 3 fixtures de detalle y 1 de listado. El detalle no trae la operación ni el tipo de anunciante del aviso (son de los relacionados): se toman de la tarjeta (`ListingRef`). **D2**: `content_hash` = sha256 de un JSON canónico del contenido, sin `scraped_at` ni atributos volátiles. Los tests usan valores escritos a mano desde el HTML. Crudo local borrado (`docs/sources.md` §8.3)
+  → seguimiento (piloto F3.3): el detalle trae `Superficie construida` y `Superficie de terreno m2` como `span.ads_tag` (23,8 % y 22,5 % de 227 avisos, con el número solo). El parser los deja en `attributes_raw` y debería llevarlos a `built_area_raw` y `land_area_raw`, que el contrato ya tiene (ver `docs/pilot/2026-10-06.md` §6 y §7)
 - [ ] F3.5 (B) Excluir datos personales: teléfonos, nombres de agentes y emails no se persisten
   → cubierto en lo esencial por D1 y D3 (caché y `RawListing` sanitizados). Pendiente: nombres de personas en texto libre (título o descripción), dominios sin esquema ("sitio.com.py") y los falsos negativos del regex (por ejemplo "981 123 456", sin el `0`)
+  → piloto F3.3 (227 avisos, solo conteos): 1 descripción con un indicio de nombre de persona ("Dr./Dra."), 1 con un teléfono reemplazado por `[TELEFONO]` y 58 con un link a un tercero reemplazado por `[URL]`. Sigue sin poder detectarse un nombre escrito en texto libre (`docs/pilot/2026-10-06.md` §10; ADR-007)
 - [ ] F3.6 (B) Modo incremental (re-scrape solo de lo nuevo) y detección de avisos dados de baja
 - [ ] F3.7 (B) Snapshot fechado `data/raw/<fecha>/` con manifest (conteos por fuente/ciudad y hash)
   → parcial: `BaseScraper` escribe un `manifest.json` por fuente (inicio, fin, presupuesto, requests usadas, conteos por resultado y `CONTRACT_VERSION`). Falta el manifest del snapshot completo (conteos por ciudad y hash)
+  → el crawler (F3.3) suma `crawl_manifest.json` en `data/interim/<fecha>/<fuente>/`: seed, páginas aleatorias, `source_id` muestreados por búsqueda y rechazos por tipo de error
 - [ ] F3.8 (B) Monitor de salud: si un parser devuelve más de X% de campos nulos, falla ruidosamente
 
 ## F4 — Limpieza y normalización
 - [ ] F4.1 (B) Parseo de precios: "USD 150.000", "U$S 150 mil", "Gs. 1.200.000.000", "consultar" → null
   → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
   → F3.1: 641/642 strings reales parseados (el que falta es "Consultar precio."), ninguno con `currency=None`. 13 montos bajos para una venta en Clasipar quedan para F4.6 (ver `docs/sources.md` §5; cifras corregidas el 2026-10-06, §8.1)
+  → piloto F3.3: 223/227 precios parseados (98,2 %), ninguno con `currency=None` (132 USD y 91 PYG). Los 4 restantes son "Gs. 0" (monto cero), para F4.6 (`docs/pilot/2026-10-06.md` §4)
 - [ ] F4.2 (B) Conversión a USD con cotización BCP de la fecha de scrape, guardando moneda y monto originales
   → decisión pendiente: qué hacer con `currency=None` (precio sin moneda explícita). `parse_price` no la adivina por magnitud; inferirla o descartar el aviso se resuelve acá, en el pipeline
 - [ ] F4.3 (B) m²: resolver construidos vs terreno, detectar intercambios y unidades erróneas
   → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
   → F3.1: el número sale bien en todos los strings reales, pero en Clasipar la superficie solo aparece en texto libre y `kind` suele quedar en None; hay un caso dudoso ("940M2 C/ CONSTRUCCION") y "desde N m2" no se marca (ver `docs/sources.md` §5)
+  → piloto F3.3 (227 avisos): 73,6 % tiene alguna superficie en el texto y 33,9 % una de tipo `construida` (casas 42,1 %, dúplex 50,7 %, departamentos 9,2 %); el 59,2 % de los departamentos solo trae superficies `kind=None`. Con "Terreno: N m² Construcción: N m²" en la misma línea gana la etiqueta del número siguiente. El tag estructurado `Superficie construida` suma cobertura (ver F3.5). Patrones de formato en `docs/pilot/2026-10-06.md` §5
 - [ ] F4.4 (B) Normalización de barrios: gazetteer, alias ("V. Morra", "Villa Morra") y fuzzy matching (rapidfuzz). Lo que no matchea va a revisión manual, no se asigna en silencio
 - [ ] F4.5 (B) Extracción de features desde la descripción (regex primero): piscina, quincho, a estrenar, condominio/barrio cerrado, **pavimento/empedrado/tierra**, ascensor, amenities
 - [ ] F4.6 (B) Reglas de outliers: USD/m² fuera de rango plausible por ciudad, errores de tipeo, alquileres colados

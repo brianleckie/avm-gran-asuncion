@@ -39,11 +39,15 @@ format:
 # lint + test (lo mismo que corre el CI)
 check: lint test
 
-# --- Pipeline: todavía sin implementación (cada receta apunta a su tarea del ROADMAP) ---
+# --- Pipeline ---
 
-scrape:
-    @echo "No implementado, ver ROADMAP F3"
-    @exit 1
+# Crawler de muestreo (F3.3). Los 4 parámetros son OBLIGATORIOS y no tienen default (presupuesto de
+# requests y seed explícitos en cada corrida). Ej.: `just scrape clasipar 260 19 42`. Es la única receta
+# que sale a la red: solo al host de la fuente, vía BaseScraper (6 s entre requests, robots.txt).
+scrape source budget per_target seed:
+    uv run python -m avm.scraping.run --source {{source}} --budget {{budget}} --per-target {{per_target}} --seed {{seed}}
+
+# --- Todavía sin implementación (cada receta apunta a su tarea del ROADMAP) ---
 
 build-dataset:
     @echo "No implementado, ver ROADMAP F4/F5"

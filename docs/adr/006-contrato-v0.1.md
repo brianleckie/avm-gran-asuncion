@@ -45,10 +45,11 @@ Este ADR es una **propuesta**: todo lo que decide se puede cambiar en la revisi�
 13. **`cluster_id` fuera de `Listing` (decisión provisoria, P6).** Va en una tabla de mapeo aparte, `(source, source_id) → cluster_id`, que produce F5.3. Así el dedup se puede rehacer sin regenerar los `Listing`.
 14. **Denominador del target (decisión provisoria, P13).** USD/m² se calcula sobre los **m² construidos**, y `PredictionRequest` exige `built_area_m2`. Se revisa con los datos de F7 (ver Consecuencias).
 15. **Sin campo de target** en `Listing` (USD/m² se calcula en F8.1) ni campos de popularidad (por ejemplo, "Nro. de Visitas" de Clasipar, §2.5).
-16. **Versionado (F1.8).** `CONTRACT_VERSION = "0.1.0"`.
+16. **Versionado (F1.8).** `CONTRACT_VERSION = "0.1.0"` en esta propuesta; vigente: **0.1.1** (historial más abajo).
     - Agregar un valor de enum o un campo opcional es un cambio **menor**.
     - Quitar o renombrar un campo o un valor, o volver obligatorio un campo opcional, es un cambio **mayor**, con ADR y migración.
     - `PredictionResponse` informa la versión del contrato con la que se generó.
+    - Historial: **0.1.1** (PATCH, solo documentación): la descripción de `RawListing.content_hash` pasa a decir lo que hace el parser (sha256 de un JSON canónico de los campos de contenido, sin `scraped_at` ni atributos volátiles; D2, `docs/sources.md` §2.8). No cambia qué datos son válidos.
 17. **Convenciones.**
     - Modelos inmutables y sin campos extra.
     - Identificadores en inglés (CLAUDE.md) y valores de enum en español, porque son datos del dominio.
