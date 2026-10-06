@@ -74,7 +74,7 @@ def looks_blocked(response: Response) -> str | None:
 
 
 def httpx_sender() -> Sender:
-    """Sender real. httpx se importa acá para que los tests no dependan del grupo `scraping`."""
+    """Sender real. httpx se importa acá para que importar el módulo no cree ningún cliente."""
     import httpx
 
     client = httpx.Client(
