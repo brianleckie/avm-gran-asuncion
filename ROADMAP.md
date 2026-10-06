@@ -35,6 +35,7 @@
 - [ ] F1.8 (B/O) Versionado: `CONTRACT_VERSION` semántico. Un cambio que rompe compatibilidad requiere ADR más migración
 
 → v0.1.0 en main (PR #5), pendiente revisión de Oscar
+→ v0.1.1 (PATCH, solo documentación): la descripción de `RawListing.content_hash` dice lo que hace el parser (D2); historial en el punto 16 del ADR-006
 
 ## F2 — Datos sintéticos (desbloquea modelado en paralelo)
 - [ ] F2.1 (O) Gazetteer provisorio de barrios por ciudad, como lista inicial

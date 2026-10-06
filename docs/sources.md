@@ -331,8 +331,8 @@ a[data-page]` (página actual), el mayor `a[data-page]` de `ul#pagination` (últ
 - **`content_hash` (D2)**: sha256 de un JSON canónico (claves ordenadas, UTF-8, separadores `,` y
   `:` sin espacios) con todos los campos del `RawListing` salvo `scraped_at`, `content_hash` y los
   atributos volátiles (`patrocinado` y "Nro. de Visitas"). Dos requests del mismo aviso sin
-  cambios reales dan el mismo hash. La descripción del campo en `raw_listing.py` dice "contenido
-  crudo"; el contrato no se tocó, y esta es la definición vigente.
+  cambios reales dan el mismo hash. La descripción del campo en `raw_listing.py` decía "contenido
+  crudo"; se corrigió en el contrato 0.1.1 (PATCH, solo documentación) y ahora dice esta definición.
 
 **Sanitizado de la caché (D1)** (`sanitize_clasipar_html`): se eliminan `.infoAnunciante__header`
 (nombre, foto o logo y perfil), `.infoAnunciante__datos` (formulario con teléfono y email
