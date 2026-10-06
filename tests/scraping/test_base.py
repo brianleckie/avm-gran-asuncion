@@ -348,13 +348,16 @@ def test_unreadable_robots_txt_is_requested_only_once_per_run(
 ) -> None:
     server.route("/robots.txt", status(503))
     scraper = make_scraper(tmp_path, server, clock)
-    with scraper, pytest.raises(RobotsUnavailableError):
+    with pytest.raises(RobotsUnavailableError):
         scraper.fetch(f"{BASE}/a")
-        used = scraper.requests_used
-        with pytest.raises(RobotsUnavailableError):  # la segunda falla sin pedir nada más
-            scraper.fetch(f"{BASE}/b")
-        assert scraper.requests_used == used
-    assert server.paths().count("/robots.txt") == 1 + MAX_RETRIES  # un intento y sus reintentos
+    used, robots_requests = scraper.requests_used, server.paths().count("/robots.txt")
+    assert robots_requests == 1 + MAX_RETRIES  # un intento y sus reintentos
+    with pytest.raises(RobotsUnavailableError):  # la segunda falla sin pedir nada más
+        scraper.fetch(f"{BASE}/b")
+    assert scraper.requests_used == used
+    assert server.paths().count("/robots.txt") == robots_requests
+    assert "/a" not in server.paths() and "/b" not in server.paths()
+    scraper.close()
 
 
 # ---------------------------------------------------------------------------- caché
