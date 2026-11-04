@@ -41,11 +41,12 @@ check: lint test
 
 # --- Pipeline ---
 
-# Crawler de muestreo (F3.3). Los 4 parámetros son OBLIGATORIOS y no tienen default (presupuesto de
-# requests y seed explícitos en cada corrida). Ej.: `just scrape clasipar 260 19 42`. Es la única receta
-# que sale a la red: solo al host de la fuente, vía BaseScraper (6 s entre requests, robots.txt).
-scrape source budget per_target seed:
-    uv run python -m avm.scraping.run --source {{source}} --budget {{budget}} --per-target {{per_target}} --seed {{seed}}
+# Crawler de muestreo (F3.3). Los 5 parámetros son OBLIGATORIOS y no tienen default (presupuesto de
+# requests, páginas y avisos por búsqueda, y seed explícitos en cada corrida). Ej.: el piloto fue
+# `just scrape clasipar 260 2 19 42`; el crawl grande, `just scrape clasipar 3900 30 400 11`. Es la
+# única receta que sale a la red: solo al host de la fuente, vía BaseScraper (6 s entre requests, robots.txt).
+scrape source budget pages_per_target per_target seed:
+    uv run python -m avm.scraping.run --source {{source}} --budget {{budget}} --pages-per-target {{pages_per_target}} --per-target {{per_target}} --seed {{seed}}
 
 # --- Todavía sin implementación (cada receta apunta a su tarea del ROADMAP) ---
 
