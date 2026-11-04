@@ -120,7 +120,7 @@ Para cerrar F6.1 como gazetteer definitivo faltan validar el universo de barrios
 las unidades homónimas y acordar I2 con Brian. Los archivos ya sirven para revisar cobertura
 y preparar F6.4, conservando estas limitaciones.
 
-## Aclaraciones aportadas por Oscar, pendientes de fuente
+## Aclaraciones iniciales aportadas por Oscar
 
 Oscar confirmó Maramburé como perteneciente a Luque. La extracción ya lo ubicaba en Luque:
 el conflicto pendiente es elegir entre geometrías diferentes, no cambiar de distrito.
@@ -138,6 +138,43 @@ Cará Cará, Tacumbú, Santa Ana, Barrio Obrero o Roberto L. Petit en alias equi
 una zona amplia puede abarcar barrios diferentes. Los nombres específicos observados en
 OSM conservan sus propias entradas y fuentes.
 
-Estas aclaraciones son aportes del usuario, no validaciones documentales independientes.
-Hasta contar con una fuente territorial y una decisión sobre las geometrías, no cierran
-F6.1 ni justifican inventar coordenadas o trasladar objetos entre ciudades.
+La verificación documental posterior se registra a continuación. Las geometrías ambiguas
+siguen sin resolverse: una lista de nombres no define sus límites espaciales.
+
+## Verificación contra el catálogo INE 2022
+
+Fuente: **INE. Lista de barrios y localidades del Paraguay. Año 2022**, archivo original:
+https://www.ine.gov.py/microdatos/register/CODIGO-GEOGRAFICO-2022/Codigos%20de%20barrios%20y%20localidades%20INE%202022.xlsx
+
+Archivo descargado para comprobación; SHA-256:
+`24702c74a1252c1e2ec52ced84d3f60120e4eefeb6f4c6c443bf4acfd80ef404`.
+Localización: primera hoja del libro, columnas A:F; encabezados en la fila 3:
+`COD_DEP`, `DEPARTAMENTO`, `COD_DIS`, `DISTRITO`, `COD_BARLOC`, `BARRIOS Y LOCALIDADES`.
+Los códigos conservan ceros iniciales y se interpretan como campos separados.
+
+- Fila 6095: `11`, CENTRAL, `09`, LUQUE, `015`, MARAMBURE.
+  Confirma pertenencia a Luque, pero no selecciona uno de los dos polígonos OSM.
+- Fila 6185: `11`, CENTRAL, `14`, SAN LORENZO, `024`, SAN FELIPE.
+  San Felipe sí figura en esta lista oficial de barrios y localidades de San Lorenzo.
+  No debe eliminarse ni trasladarse a Asunción por homonimia. La lista no identifica
+  cuál de los dos nodos OSM representa esa unidad ni prueba su relación con Reducto/Calle'i.
+- Fila 29: `00`, ASUNCIÓN, `00`, ASUNCIÓN, `026`, BANCO SAN MIGUEL.
+  El código de barrio/localidad de esta fuente es `026`, no `029`.
+- Fila 15: Asunción, código de barrio/localidad `012`, RICARDO BRUGADA.
+- Fila 25: Asunción, código de barrio/localidad `022`, BAÑADO CARA CARA.
+
+No hay una fila de nombre exacto SAN FELIPE entre las filas de Asunción de este libro.
+Eso no invalida el topónimo local observado en OSM, pero tampoco prueba que esté contenido
+en Banco San Miguel o Ricardo Brugada: esa relación requiere límites o una fuente específica.
+
+Los códigos `0302` para Luque y `1109` para San Lorenzo aportados inicialmente no se adoptan
+como códigos INE 2022. En este libro `COD_DEP=11`, `COD_DIS=09` corresponde a Luque;
+San Lorenzo tiene `COD_DIS=14`. No se presume equivalencia entre códigos censales y electorales.
+
+El portal https://www.tsje.gov.py/ aportado por Oscar no identifica un documento, versión,
+página o registro específico que permita validar los códigos electorales propuestos.
+Por ahora no se declaran verificados ni se incorporan al contrato inmobiliario.
+
+Resultado: pertenencia nominal de Maramburé a Luque y San Felipe a San Lorenzo corroborada;
+selección de geometrías y correspondencia de sectores de Asunción pendientes. Esta revisión
+no modifica coordenadas ni cierra por sí sola F6.1.
