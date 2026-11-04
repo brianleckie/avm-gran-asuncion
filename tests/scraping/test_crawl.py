@@ -707,6 +707,8 @@ def test_a_block_in_the_middle_of_the_listings_cuts_everything_cleanly(tmp_path:
     assert listings(tmp_path) == []
     data = manifest(tmp_path)
     assert data["stopped"] == "blocked" and len(data["targets"]) == 3
+    # El manifest lista solo las páginas que se pidieron: la 3ª (el bloqueo) y las siguientes no.
+    assert [t["random_pages"] for t in data["targets"]] == [[2, 3, 4, 5], [2, 3, 4, 5], [2]]
     base_manifest = json.loads((scraper.directory / "manifest.json").read_text("utf-8"))
     assert base_manifest["blocked"] is True
 
@@ -765,6 +767,7 @@ def test_network_failures_while_listing_cut_the_run_before_any_detail(tmp_path: 
     data = manifest(tmp_path)
     assert data["stopped"] == "network" and len(data["targets"]) == 1
     assert data["targets"][0]["errors"] == ["pagina_aleatoria:sin_respuesta"] * 20
+    assert len(data["targets"][0]["random_pages"]) == 20  # las 20 que se pidieron, no las 29
 
 
 # ------------------------------------------------------------------------- pre-vuelo y hora de fin
@@ -861,6 +864,31 @@ def test_the_plan_warns_and_uses_the_budget_as_the_cap_when_the_details_do_not_f
     plan_lines = [message for _, message in records if message.startswith("[plan]")]
     assert "15 requests a 7,4 s" in plan_lines[1]  # 40 de presupuesto - 25 ya usadas
     assert any(level == logging.WARNING and "faltan 45" in message for level, message in records)
+
+
+def test_progress_uses_the_measured_pace_once_the_clock_advances(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.INFO, logger=LOGGER)
+    site = FakeSite()
+    site.latency = 5.0  # mucho más lento que los 0,9 s del piloto
+    start = site.clock.now
+    run(
+        tmp_path,
+        site=site,
+        per_target=3,
+        progress_every=10,
+        utcnow=lambda: NOW + timedelta(seconds=site.clock.now - start),
+    )
+    lines = [r.getMessage() for r in caplog.records if r.getMessage().startswith("[progreso]")]
+    # A las 30 requests: 29 esperas de 7,0 s (6 s más el jitter máximo del reloj de prueba) y 30
+    # latencias de 5,0 s. Ya con el plan conocido quedan 36 - 5 = 31 detalles por pedir.
+    elapsed = 29 * 7.0 + 30 * 5.0
+    measured = (NOW + timedelta(seconds=elapsed * (1 + 31 / 30))).astimezone()
+    at_pilot_pace = NOW + timedelta(seconds=elapsed + 31 * ESTIMATED_SECONDS_PER_REQUEST)
+    assert "requests 30/" in lines[2]
+    assert f"fin estimado {measured:%d/%m %H:%M}" in lines[2]
+    assert f"{measured:%d/%m %H:%M}" != f"{at_pilot_pace.astimezone():%d/%m %H:%M}"
 
 
 def test_progress_lines_include_the_estimated_end(

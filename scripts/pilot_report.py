@@ -1112,11 +1112,12 @@ def render(
     rows = build_rows(listings, manifest)
     pages = manifest.get("pages_per_target")  # los manifests del piloto no lo traen
     pages_flag = f"--pages-per-target {pages} " if pages is not None else ""
-    random_part = (
-        "UNA página aleatoria"
-        if is_pilot_design(manifest)
-        else f"hasta {pages - 1} páginas aleatorias, sin reposición,"
-    )
+    if is_pilot_design(manifest):
+        random_part = "UNA página aleatoria"
+    elif pages == 1:
+        random_part = "ninguna página aleatoria"
+    else:
+        random_part = f"hasta {pages - 1} páginas aleatorias, sin reposición,"
     lines = [
         f"# Piloto de Clasipar (F3.3): reporte de la corrida del {manifest['snapshot_date']}",
         "",

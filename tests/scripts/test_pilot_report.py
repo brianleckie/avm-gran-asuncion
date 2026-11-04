@@ -401,6 +401,17 @@ def test_a_manifest_with_several_random_pages_per_search_is_reported() -> None:
     assert "cerca de la mitad" not in text  # esa fracción solo se midió con el diseño del piloto
 
 
+def test_one_page_per_search_says_there_is_no_random_page() -> None:
+    manifest, listings = sample()
+    manifest["pages_per_target"] = 1
+    for target in manifest["targets"]:
+        del target["random_page"]
+        target["random_pages"] = []
+    text = report.render(manifest, listings, request_log(), None, None)
+    assert "la página 1 más ninguna página aleatoria en [2, última]" in text
+    assert "hasta 0" not in text
+
+
 def test_two_pages_per_search_in_the_new_manifest_reads_as_the_pilot_design() -> None:
     manifest, listings = sample()
     manifest["pages_per_target"] = 2

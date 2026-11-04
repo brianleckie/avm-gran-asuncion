@@ -102,7 +102,7 @@ class TargetPlan:
     target: SearchTarget
     total_results: int | None = None
     last_page: int | None = None
-    random_pages: list[int] = field(default_factory=list)  # páginas elegidas, sin la 1
+    random_pages: list[int] = field(default_factory=list)  # aleatorias ya pedidas, sin la 1
     pool_size: int = 0  # referencias únicas disponibles, sin las ya planificadas por otro target
     excluded_duplicates: int = 0
     short: bool = False  # menos referencias que `per_target`
@@ -371,8 +371,7 @@ class _Run:
             return
         plan.total_results, plan.last_page = first.total_results, first.last_page
         pages: dict[int, tuple[ListingRef, ...]] = {1: first.refs}
-        plan.random_pages = pick_pages(rng, first.last_page, self.pages_per_target)[1:]
-        for number in plan.random_pages:
+        for number in pick_pages(rng, first.last_page, self.pages_per_target)[1:]:
             page = self._listing(plan, number)
             if page is not None:
                 pages[number] = page.refs
@@ -401,6 +400,8 @@ class _Run:
         self._progress()
         label = "pagina_1" if number == 1 else "pagina_aleatoria"
         page = self._parse_listing(plan, result, label)
+        if number != 1:  # solo las que llegaron a pedirse: un corte no deja páginas sin pedir
+            plan.random_pages.append(number)
         self._track_network(result)
         return page
 
