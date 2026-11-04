@@ -119,3 +119,25 @@ y no están deduplicados por institución.
 Para cerrar F6.1 como gazetteer definitivo faltan validar el universo de barrios, resolver
 las unidades homónimas y acordar I2 con Brian. Los archivos ya sirven para revisar cobertura
 y preparar F6.4, conservando estas limitaciones.
+
+## Aclaraciones aportadas por Oscar, pendientes de fuente
+
+Oscar confirmó Maramburé como perteneciente a Luque. La extracción ya lo ubicaba en Luque:
+el conflicto pendiente es elegir entre geometrías diferentes, no cambiar de distrito.
+No se incorpora el código electoral `0302`: no forma parte del contrato inmobiliario ni
+resuelve la elección del polígono.
+
+Oscar identificó San Felipe en el sector Banco San Miguel/Ricardo Brugada de Asunción.
+El gazetteer ya contiene un San Felipe de Asunción; eso no demuestra que los dos objetos
+homónimos encontrados dentro de San Lorenzo deban trasladarse o borrarse. Se conserva
+la separación por ciudad y la revisión pendiente de esos dos nodos.
+
+Oscar indicó que «Bañado» debe distinguirse por sectores norte y sur. Esto es compatible
+con no asignar un centroide único a la entrada genérica. No se convierten automáticamente
+Cará Cará, Tacumbú, Santa Ana, Barrio Obrero o Roberto L. Petit en alias equivalentes:
+una zona amplia puede abarcar barrios diferentes. Los nombres específicos observados en
+OSM conservan sus propias entradas y fuentes.
+
+Estas aclaraciones son aportes del usuario, no validaciones documentales independientes.
+Hasta contar con una fuente territorial y una decisión sobre las geometrías, no cierran
+F6.1 ni justifican inventar coordenadas o trasladar objetos entre ciudades.
