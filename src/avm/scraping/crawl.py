@@ -1,15 +1,16 @@
 """Crawler de muestreo de listados (F3.3): del listado a un `RawListing` por aviso muestreado.
 
-No recorre todo el portal: toma una muestra reproducible, pensada para el piloto. Por cada búsqueda
-(`SearchTarget`: tipo x ciudad) de la fuente:
+No recorre todo el portal: toma una muestra reproducible. Por cada búsqueda (`SearchTarget`: tipo x
+ciudad) de la fuente:
 1. Pide la página 1 y lee `last_page` y `total_results`.
-2. Si `last_page > 1`, pide UNA página al azar en [2, last_page].
-3. Une las referencias de ambas páginas (`merge_refs`) y muestrea SIN reposición hasta
+2. Elige `pages_per_target - 1` páginas más al azar y SIN reposición en [2, last_page] (todas si
+   hay menos, ver `pick_pages`) y las pide en orden ascendente. El piloto es `pages_per_target=2`.
+3. Une las referencias de todas esas páginas (`merge_refs`) y muestrea SIN reposición hasta
    `per_target` con el mismo rng. Si hay menos, toma todas y lo registra (`short`).
-Después pide los detalles de todos los targets INTERCALADOS (round-robin), para que un corte por
-presupuesto o por bloqueo no deje combinaciones enteras sin muestra. Cada detalle pasa por
-`parse_detail`; los `RawListing` válidos se agregan, uno por línea y con flush, a
-`<out_dir>/raw_listings.jsonl`.
+Orden de los pedidos: robots.txt, TODOS los listados de todas las búsquedas y recién después los
+detalles de todos los targets INTERCALADOS (round-robin), para que un corte por presupuesto o por
+bloqueo no deje combinaciones enteras sin muestra. Cada detalle pasa por `parse_detail`; los
+`RawListing` válidos se agregan, uno por línea y con flush, a `<out_dir>/raw_listings.jsonl`.
 
 Reglas:
 - Todo pedido pasa por `BaseScraper` (cortesía, robots.txt, presupuesto, caché sanitizada y
@@ -17,10 +18,17 @@ Reglas:
 - Reproducibilidad: cada target usa su propio rng, `Random(f"{seed}|{url del target}")`. Así el
   muestreo de un target no depende de si otro falló. El plan (seed, páginas aleatorias y los
   `source_id` muestreados, con la página de la que salió cada uno) queda en `crawl_manifest.json`.
+  Con `pages_per_target=2` el plan es idéntico al del piloto para el mismo seed.
 - Un detalle que no valida se cuenta por tipo de error y se sigue. Del error solo se guarda la
   clase y el campo, NUNCA el mensaje ni el valor (traen el contenido del aviso).
 - `BlockedError` corta TODO, sin reintentos; `BudgetExhaustedError` y `RobotsUnavailableError`
-  también. En los tres casos se conserva lo obtenido y se escribe el manifest (`stopped`).
+  también. Lo mismo `NetworkDownError`: `MAX_CONSECUTIVE_NETWORK_ERRORS` pedidos seguidos sin
+  respuesta (sin conexión o timeout, ya agotados los reintentos de `BaseScraper`); cualquier
+  respuesta HTTP, aunque sea un error, reinicia la cuenta. En los cuatro casos se conserva lo
+  obtenido y se escribe el manifest (`stopped`).
+- Antes de la primera request se imprime el pre-vuelo: requests máximas planificadas, duración y
+  hora de fin estimadas (a `ESTIMATED_SECONDS_PER_REQUEST`) y un aviso si superan el presupuesto,
+  que sigue siendo tope duro. Es una cota: el plan exacto sale en `[plan]` al terminar los listados.
 - El archivo de salida se abre en modo exclusivo: si ya existe, falla ANTES de enviar un pedido.
 """
 
@@ -34,7 +42,7 @@ import statistics
 from collections import Counter, deque
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import IO, Any, Final
 
@@ -54,6 +62,14 @@ from avm.scraping.sources.clasipar import ListingPage, ListingRef, SearchTarget
 LISTINGS_NAME: Final = "raw_listings.jsonl"
 MANIFEST_NAME: Final = "crawl_manifest.json"
 PROGRESS_EVERY: Final = 50
+
+# Ritmo para estimar la duración: la espera media entre requests (demora mínima más la mitad del
+# jitter) más la latencia media medida en el piloto (docs/pilot/2026-10-06.md §1: 0,90 s).
+PILOT_MEAN_LATENCY_S: Final = 0.9
+ESTIMATED_SECONDS_PER_REQUEST: Final = MIN_DELAY_S + JITTER_MAX_S / 2 + PILOT_MEAN_LATENCY_S
+
+# Pedidos seguidos sin respuesta (sin conexión o timeout) después de los cuales se corta la corrida.
+MAX_CONSECUTIVE_NETWORK_ERRORS: Final = 20
 
 LOG = logging.getLogger(__name__)
 
@@ -75,6 +91,10 @@ class SourceSpec:
     parse_detail: Callable[..., RawListing]
 
 
+class NetworkDownError(RuntimeError):
+    """`MAX_CONSECUTIVE_NETWORK_ERRORS` pedidos seguidos sin respuesta: se corta la corrida."""
+
+
 @dataclass(slots=True)
 class TargetPlan:
     """Qué se pidió y qué se muestreó de una búsqueda."""
@@ -82,7 +102,7 @@ class TargetPlan:
     target: SearchTarget
     total_results: int | None = None
     last_page: int | None = None
-    random_page: int | None = None
+    random_pages: list[int] = field(default_factory=list)  # aleatorias ya pedidas, sin la 1
     pool_size: int = 0  # referencias únicas disponibles, sin las ya planificadas por otro target
     excluded_duplicates: int = 0
     short: bool = False  # menos referencias que `per_target`
@@ -95,7 +115,7 @@ class TargetPlan:
 
 @dataclass(frozen=True, slots=True)
 class CrawlResult:
-    stopped: str | None  # None, "blocked", "budget" o "robots_unavailable"
+    stopped: str | None  # None, "blocked", "budget", "robots_unavailable" o "network"
     reason: str | None
     planned: int
     attempted: int
@@ -134,6 +154,37 @@ def _validation_keys(error: ValidationError) -> set[str]:
     return keys
 
 
+def pick_pages(rng: random.Random, last_page: int | None, pages_per_target: int) -> list[int]:
+    """Páginas a pedir de una búsqueda: la 1 y hasta `pages_per_target - 1` más, sin reposición.
+
+    Las extra salen al azar de [2, last_page] (todas, si son menos) y van en orden ascendente. Sin
+    paginación (`last_page` None o 1) o con `pages_per_target=1` es solo la página 1 y no gasta el
+    rng. Con `pages_per_target=2` hace lo mismo que el piloto: una sola extra, con un
+    `randrange(n)` que consume el rng igual que el `randint(2, n + 1)` de entonces (también con
+    n=1), así el `sample` de los detalles que viene después del mismo rng no cambia.
+    """
+    if last_page is None or last_page < 2:
+        return [1]
+    remaining = list(range(2, last_page + 1))
+    extra = [
+        remaining.pop(rng.randrange(len(remaining)))
+        for _ in range(min(pages_per_target - 1, len(remaining)))
+    ]
+    return [1, *sorted(extra)]
+
+
+def estimated_seconds_per_request(elapsed_s: float, requests_used: int) -> float:
+    """Ritmo medido (segundos por request) o, sin datos todavía, el del piloto."""
+    if requests_used > 0 and elapsed_s > 0:
+        return elapsed_s / requests_used
+    return ESTIMATED_SECONDS_PER_REQUEST
+
+
+def _duration(seconds: float) -> str:
+    hours, minutes = divmod(round(seconds / 60), 60)
+    return f"{hours} h {minutes} min" if hours else f"{minutes} min"
+
+
 def _round_robin(plans: Sequence[TargetPlan]) -> Iterator[tuple[TargetPlan, ListingRef]]:
     """Un aviso de cada target por vuelta, en el orden de los targets."""
     queues = [(plan, deque(plan.sampled)) for plan in plans]
@@ -150,6 +201,7 @@ class _Run:
         spec: SourceSpec,
         *,
         per_target: int,
+        pages_per_target: int,
         seed: int,
         out_dir: Path,
         utcnow: Callable[[], datetime],
@@ -158,6 +210,7 @@ class _Run:
         self.scraper = scraper
         self.spec = spec
         self.per_target = per_target
+        self.pages_per_target = pages_per_target
         self.seed = seed
         self.out_dir = out_dir
         self.utcnow = utcnow
@@ -177,6 +230,9 @@ class _Run:
         self._finished_at: datetime | None = None
         self._file: IO[str] | None = None
         self._last_mark = 0
+        self._planning = True  # True hasta terminar los listados
+        self._upper_bound = 0  # requests máximas planificadas, calculadas en el pre-vuelo
+        self._network_errors = 0  # pedidos seguidos sin respuesta
 
     # ------------------------------------------------------------------ corrida
 
@@ -198,6 +254,9 @@ class _Run:
             except RobotsUnavailableError as error:
                 self._stop("robots_unavailable", error)
                 LOG.error("[robots] %s", error)
+            except NetworkDownError as error:
+                self._stop("network", error)
+                LOG.error("[red] %s: se corta y se guarda lo obtenido", error)
             except KeyboardInterrupt:
                 self.stopped = "interrupted"
                 raise
@@ -229,46 +288,79 @@ class _Run:
     # ------------------------------------------------------------------ plan
 
     def _announce(self) -> None:
+        """Pre-vuelo: lo que la corrida puede llegar a pedir, antes de la primera request.
+
+        Es una cota: todavía no se conoce la última página de cada búsqueda ni cuántos avisos
+        tiene cada pool, así que supone `pages_per_target` listados y `per_target` detalles.
+        """
         targets = len(self.spec.targets())
-        total = 1 + 2 * targets + self.per_target * targets
-        seconds = total * (MIN_DELAY_S + JITTER_MAX_S / 2)
+        listings = targets * self.pages_per_target
+        details = targets * self.per_target
+        self._upper_bound = 1 + listings + details
+        budget = self.scraper.max_requests
         LOG.info(
-            "[inicio] %s: %d búsquedas, seed %d, %d por búsqueda; plan de hasta %d requests "
-            "(1 robots + %d listados + %d detalles), presupuesto %d; unos %.0f min de espera sin "
-            "contar la latencia",
+            "[inicio] %s: %d búsquedas, seed %d, %d páginas y %d avisos por búsqueda",
             self.spec.name,
             targets,
             self.seed,
+            self.pages_per_target,
             self.per_target,
-            total,
-            2 * targets,
-            self.per_target * targets,
-            self.scraper.max_requests,
-            seconds / 60,
         )
-        if total > self.scraper.max_requests:
+        LOG.info(
+            "[pre-vuelo] requests máximas planificadas: %d (1 robots + %d listados + %d "
+            "detalles), presupuesto %d",
+            self._upper_bound,
+            listings,
+            details,
+            budget,
+        )
+        LOG.info(
+            "[pre-vuelo] %s", self._estimate("duración estimada", min(self._upper_bound, budget))
+        )
+        if self._upper_bound > budget:
             LOG.warning(
-                "[presupuesto] el plan (%d requests) supera el presupuesto (%d): el corte por "
-                "presupuesto va a dejar muestra sin pedir",
-                total,
-                self.scraper.max_requests,
+                "[pre-vuelo] AVISO: las %d requests máximas superan el presupuesto de %d, que es "
+                "tope duro. Es una cota (todavía no se conoce la última página de cada búsqueda): "
+                "el plan exacto sale en [plan] al terminar los listados y, si no alcanza, el corte "
+                "por presupuesto deja sin pedir los últimos detalles, parejo entre búsquedas",
+                self._upper_bound,
+                budget,
             )
+
+    def _estimate(self, label: str, requests: int) -> str:
+        """`label`, duración y hora local de fin de `requests` requests al ritmo del piloto."""
+        seconds = requests * ESTIMATED_SECONDS_PER_REQUEST
+        end = (self.utcnow() + timedelta(seconds=seconds)).astimezone()
+        pace = f"{ESTIMATED_SECONDS_PER_REQUEST:.1f}".replace(".", ",")
+        return (
+            f"{label} {_duration(seconds)} ({requests} requests a {pace} s por request); "
+            f"fin estimado {end:%d/%m %H:%M}"
+        )
 
     def _plan_all(self) -> None:
         for target in self.spec.targets():
             plan = TargetPlan(target)
             self.plans.append(plan)  # antes de pedir: un corte deja registrado dónde quedó
             self._plan_target(plan)
+        self._planning = False
+        used, remaining = self.scraper.requests_used, self.scraper.requests_remaining
         LOG.info(
-            "[plan] %d detalles muestreados en %d búsquedas; quedan %d requests de presupuesto",
+            "[plan] %d detalles muestreados en %d búsquedas; requests: %d usadas + %d de "
+            "detalles = %d, presupuesto %d",
             self._planned,
             len(self.plans),
-            self.scraper.requests_remaining,
+            used,
+            self._planned,
+            used + self._planned,
+            self.scraper.max_requests,
         )
-        if self._planned > self.scraper.requests_remaining:
+        LOG.info(
+            "[plan] %s", self._estimate("duración restante estimada", min(self._planned, remaining))
+        )
+        if self._planned > remaining:
             LOG.warning(
                 "[presupuesto] faltan %d requests para pedir todos los detalles muestreados",
-                self._planned - self.scraper.requests_remaining,
+                self._planned - remaining,
             )
 
     def _plan_target(self, plan: TargetPlan) -> None:
@@ -279,11 +371,10 @@ class _Run:
             return
         plan.total_results, plan.last_page = first.total_results, first.last_page
         pages: dict[int, tuple[ListingRef, ...]] = {1: first.refs}
-        if first.last_page is not None and first.last_page > 1:
-            plan.random_page = rng.randint(2, first.last_page)
-            second = self._listing(plan, plan.random_page)
-            if second is not None:
-                pages[plan.random_page] = second.refs
+        for number in pick_pages(rng, first.last_page, self.pages_per_target)[1:]:
+            page = self._listing(plan, number)
+            if page is not None:
+                pages[number] = page.refs
         for number, refs in pages.items():
             for ref in refs:
                 found_in = plan.origins.setdefault(ref.source_id, [])
@@ -308,6 +399,15 @@ class _Run:
         result = self.scraper.fetch(self.spec.page_url(plan.target.url, number))
         self._progress()
         label = "pagina_1" if number == 1 else "pagina_aleatoria"
+        page = self._parse_listing(plan, result, label)
+        if number != 1:  # solo las que llegaron a pedirse: un corte no deja páginas sin pedir
+            plan.random_pages.append(number)
+        self._track_network(result)
+        return page
+
+    def _parse_listing(
+        self, plan: TargetPlan, result: FetchResult, label: str
+    ) -> ListingPage | None:
         if result.html is None:
             plan.errors.append(f"{label}:{_fetch_key(result)}")
             return None
@@ -316,6 +416,20 @@ class _Run:
         except Exception as error:  # el HTML cambió: se registra la clase, nunca el mensaje
             plan.errors.append(f"{label}:{type(error).__name__}")
             return None
+
+    def _track_network(self, result: FetchResult) -> None:
+        """Cuenta los pedidos seguidos sin respuesta; cualquier respuesta HTTP reinicia la cuenta.
+
+        La caché y los pedidos que robots.txt prohíbe no tocan la red: no suman ni reinician.
+        """
+        if result.outcome == "error" and result.status is None:
+            self._network_errors += 1
+            if self._network_errors >= MAX_CONSECUTIVE_NETWORK_ERRORS:
+                raise NetworkDownError(
+                    f"{self._network_errors} pedidos seguidos sin respuesta (fallo de red)"
+                )
+        elif result.status is not None:
+            self._network_errors = 0
 
     # ------------------------------------------------------------------ detalles
 
@@ -328,6 +442,10 @@ class _Run:
         result = self.scraper.fetch(ref.url)
         plan.attempted += 1
         self.attempted += 1
+        self._store_detail(plan, ref, result)
+        self._track_network(result)
+
+    def _store_detail(self, plan: TargetPlan, ref: ListingRef, result: FetchResult) -> None:
         if result.html is None:
             self.fetch_errors[_fetch_key(result)] += 1
             return
@@ -361,7 +479,7 @@ class _Run:
         mean = f"{statistics.fmean(latencies):.2f} s" if latencies else "n/d"
         LOG.info(
             "[progreso] requests %d/%d | ok %d | error %d | cache %d | latencia media %s | "
-            "detalles válidos %d rechazados %d",
+            "detalles válidos %d rechazados %d | %s",
             self.scraper.requests_used,
             self.scraper.max_requests,
             counts["ok"],
@@ -370,7 +488,22 @@ class _Run:
             mean,
             self.valid,
             self.rejected,
+            self._end_estimate(),
         )
+
+    def _end_estimate(self) -> str:
+        """Hora local de fin: lo que queda por pedir (tope: el presupuesto) al ritmo medido.
+
+        Durante los listados no se sabe cuántos detalles habrá: se usa la cota del pre-vuelo y la
+        hora se rotula "fin máx.".
+        """
+        used = self.scraper.requests_used
+        expected = self._upper_bound - used if self._planning else self._planned - self.attempted
+        remaining = max(0, min(expected, self.scraper.requests_remaining))
+        now = self.utcnow()
+        pace = estimated_seconds_per_request((now - self.started_at).total_seconds(), used)
+        end = (now + timedelta(seconds=remaining * pace)).astimezone()
+        return f"{'fin máx.' if self._planning else 'fin estimado'} {end:%d/%m %H:%M}"
 
     def _summarize(self) -> None:
         end = self._finished_at or self.utcnow()
@@ -396,6 +529,7 @@ class _Run:
             "seed": self.seed,
             "budget": self.scraper.max_requests,
             "per_target": self.per_target,
+            "pages_per_target": self.pages_per_target,
             "stopped": self.stopped,
             "stop_reason": self.reason,
             "requests": {
@@ -423,7 +557,7 @@ class _Run:
             "url": plan.target.url,
             "total_results": plan.total_results,
             "last_page": plan.last_page,
-            "random_page": plan.random_page,
+            "random_pages": plan.random_pages,
             "pool_size": plan.pool_size,
             "excluded_duplicates": plan.excluded_duplicates,
             "short": plan.short,
@@ -455,6 +589,7 @@ def crawl(
     spec: SourceSpec,
     *,
     per_target: int,
+    pages_per_target: int,
     seed: int,
     out_dir: Path,
     utcnow: Callable[[], datetime] = utc_now,
@@ -462,16 +597,20 @@ def crawl(
 ) -> CrawlResult:
     """Muestrea los listados de `spec` y escribe los `RawListing` válidos en `out_dir`.
 
-    `scraper` es el `BaseScraper` de la fuente (con su presupuesto). Devuelve el resultado también
-    cuando la corrida se cortó (`stopped`); solo `KeyboardInterrupt` y los errores inesperados se
-    propagan, después de escribir el manifest.
+    `scraper` es el `BaseScraper` de la fuente (con su presupuesto). Por búsqueda se piden
+    `pages_per_target` páginas (la 1 y el resto al azar) y se muestrean hasta `per_target` avisos.
+    Devuelve el resultado también cuando la corrida se cortó (`stopped`); solo `KeyboardInterrupt`
+    y los errores inesperados se propagan, después de escribir el manifest.
     """
     if per_target < 1:
         raise ValueError("per_target tiene que ser al menos 1")
+    if pages_per_target < 1:
+        raise ValueError("pages_per_target tiene que ser al menos 1")
     return _Run(
         scraper,
         spec,
         per_target=per_target,
+        pages_per_target=pages_per_target,
         seed=seed,
         out_dir=out_dir,
         utcnow=utcnow,

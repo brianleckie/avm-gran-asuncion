@@ -379,6 +379,25 @@ def section_execution(manifest: dict[str, Any], requests: Sequence[dict[str, Any
     return [*lines, ""]
 
 
+def random_pages(target: dict[str, Any]) -> list[int]:
+    """Páginas aleatorias de una búsqueda: `random_pages` o, en manifests viejos, `random_page`."""
+    if "random_pages" in target:
+        return list(target["random_pages"])
+    return [] if target["random_page"] is None else [target["random_page"]]
+
+
+def random_pages_label(target: dict[str, Any]) -> str:
+    pages = random_pages(target)
+    if not pages:
+        return "—"
+    return str(pages[0]) if len(pages) == 1 else f"{len(pages)} págs."
+
+
+def is_pilot_design(manifest: dict[str, Any]) -> bool:
+    """Página 1 más UNA aleatoria. Los manifests anteriores a `--pages-per-target` no lo traen."""
+    return manifest.get("pages_per_target", 2) == 2
+
+
 def section_sample(manifest: dict[str, Any], rows: Sequence[Row]) -> list[str]:
     lines = ["## 2. Muestra", ""]
     data = []
@@ -391,7 +410,7 @@ def section_sample(manifest: dict[str, Any], rows: Sequence[Row]) -> list[str]:
                 CITY_LABEL[target["city"]],
                 target["total_results"] if target["total_results"] is not None else "n/d",
                 target["last_page"] if target["last_page"] is not None else "n/d",
-                target["random_page"] if target["random_page"] is not None else "—",
+                random_pages_label(target),
                 target["pool_size"],
                 f"{len(mine)}{' (corta)' if target['short'] else ''}",
                 origin["página 1"],
@@ -417,16 +436,29 @@ def section_sample(manifest: dict[str, Any], rows: Sequence[Row]) -> list[str]:
         data,
     )
     origin = Counter(r.origin for r in rows)
+    if is_pilot_design(manifest):
+        pool_note = '- "Pool" son las referencias únicas de la página 1 y de la aleatoria'
+        bias_note = (
+            "- **Sesgo del diseño:** la página 1 aporta cerca de la mitad del pool y es una "
+            "página especial (orden por defecto del portal, patrocinados); no es una muestra "
+            "uniforme de cada búsqueda. Por eso el punto 6 repite la tasa solo con los avisos "
+            "de la página aleatoria."
+        )
+    else:  # K > 2 páginas: la fracción del pool que aporta la página 1 depende de K
+        pool_note = '- "Pool" son las referencias únicas de la página 1 y de las aleatorias'
+        bias_note = (
+            "- **Sesgo del diseño:** la página 1 es una página especial (orden por defecto del "
+            "portal, patrocinados); no es una muestra uniforme de cada búsqueda. Por eso el "
+            "punto 6 repite la tasa solo con los avisos de las páginas aleatorias."
+        )
     lines += [
         f"- Total de avisos válidos: {len(rows)}. De la página 1: {origin['página 1']}; de la "
         f"página aleatoria: {origin['aleatoria']}; presentes en ambas: {origin['ambas']}; "
         f"sin plan: {origin['sin plan']}.",
         f"- Patrocinados (D5): {frac(sum(r.sponsored for r in rows), len(rows))}.",
-        '- "Pool" son las referencias únicas de la página 1 y de la aleatoria (menos las ya '
-        'planificadas por otra búsqueda); "corta" marca las que tienen menos que `--per-target`.',
-        "- **Sesgo del diseño:** la página 1 aporta cerca de la mitad del pool y es una página "
-        "especial (orden por defecto del portal, patrocinados); no es una muestra uniforme de cada "
-        "búsqueda. Por eso el punto 6 repite la tasa solo con los avisos de la página aleatoria.",
+        f"{pool_note} (menos las ya planificadas por otra búsqueda); "
+        '"corta" marca las que tienen menos que `--per-target`.',
+        bias_note,
         "",
     ]
     return lines
@@ -1078,6 +1110,14 @@ def render(
     conclusion: str | None,
 ) -> str:
     rows = build_rows(listings, manifest)
+    pages = manifest.get("pages_per_target")  # los manifests del piloto no lo traen
+    pages_flag = f"--pages-per-target {pages} " if pages is not None else ""
+    if is_pilot_design(manifest):
+        random_part = "UNA página aleatoria"
+    elif pages == 1:
+        random_part = "ninguna página aleatoria"
+    else:
+        random_part = f"hasta {pages - 1} páginas aleatorias, sin reposición,"
     lines = [
         f"# Piloto de Clasipar (F3.3): reporte de la corrida del {manifest['snapshot_date']}",
         "",
@@ -1085,10 +1125,10 @@ def render(
         "descripciones ni ningún texto de los avisos (ToS de Clasipar, ADR-007). Los precios son "
         "precios de oferta publicados, no de transacción.",
         "",
-        f"- Corrida: `--source {manifest['source']} --budget {manifest['budget']} "
+        f"- Corrida: `--source {manifest['source']} --budget {manifest['budget']} {pages_flag}"
         f"--per-target {manifest['per_target']} --seed {manifest['seed']}`; contrato "
         f"v{manifest['contract_version']}.",
-        f"- Muestreo: por búsqueda (tipo × ciudad), la página 1 más UNA página aleatoria en "
+        f"- Muestreo: por búsqueda (tipo × ciudad), la página 1 más {random_part} en "
         f"[2, última], y {manifest['per_target']} avisos sin reposición de la unión (plan "
         "completo en `crawl_manifest.json`, local).",
         "",
