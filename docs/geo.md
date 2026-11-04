@@ -154,7 +154,7 @@ https://www.ine.gov.py/microdatos/register/CODIGO-GEOGRAFICO-2022/Codigos%20de%2
 
 Archivo descargado para comprobación; SHA-256:
 `24702c74a1252c1e2ec52ced84d3f60120e4eefeb6f4c6c443bf4acfd80ef404`.
-Localización: primera hoja del libro, columnas A:F; encabezados en la fila 3:
+Localización: primera hoja del libro, columnas B:G; encabezados en la fila 3:
 `COD_DEP`, `DEPARTAMENTO`, `COD_DIS`, `DISTRITO`, `COD_BARLOC`, `BARRIOS Y LOCALIDADES`.
 Los códigos conservan ceros iniciales y se interpretan como campos separados.
 
@@ -211,3 +211,33 @@ Prueba de regresión: un polígono cuyo punto interior cae dentro de la ciudad p
 su límite debe excluirse, permitiendo seleccionar el candidato completamente contenido.
 Las 14 pruebas geo pasan sin red. F6.1 sigue pendiente de validar el universo oficial y
 acordar I2; San Felipe de San Lorenzo continúa en revisión y Bañado genérico sin centroide.
+
+
+## Decisiones delegadas por Oscar y entrega utilizable
+
+Oscar autorizó elegir los casos pendientes. Para San Felipe de San Lorenzo se selecciona
+provisionalmente el nodo 1969335519: está dentro del municipio y declara explícitamente
+`is_in:town=San Lorenzo`. El nodo alternativo 2979211659 no tiene esa etiqueta. Esto es un
+criterio de procedencia, no prueba de mayor exactitud. La selección queda registrada como
+`reviewed_provisional_selection` en geo_issues.json; si desaparece la etiqueta, vuelve a revisión.
+San Felipe de Asunción permanece separado. Bañado genérico se excluye del CSV utilizable,
+conservando su procedencia y motivo en el reporte; los sectores específicos permanecen.
+
+Resultado vigente: 169 entradas, todas ubicadas: Asunción 75, Luque 36, San Lorenzo 42,
+Fernando de la Mora 16. Estos valores sustituyen los conteos históricos anteriores.
+
+Se añadió scripts/compare_ine.py, comparación reproducible con el Excel original:
+
+```powershell
+uv run python scripts/compare_ine.py --ine <ruta-al-excel-INE>
+```
+
+La comparación por nombre o alias exacto normalizado arroja: Asunción 51 de 68 filas INE;
+Luque 20 de 26; San Lorenzo 36 de 54; Fernando de la Mora 12 de 15. Quedan 44 nombres para
+revisar; no son necesariamente barrios ausentes. Los resultados detallados y códigos se
+conservan en data/reference/ine_comparison.csv, con hash de fuente en el JSON acompañante.
+No se incorporaron coordenadas ni equivalencias inventadas para mejorar esos conteos.
+
+Esta versión es utilizable para continuar con F6.4, con selecciones provisionales explícitas.
+No se marca F6.1 como padrón oficial definitivo. El formato de I2 continúa como propuesta
+para revisión de Brian; no se atribuye a él una aprobación que todavía no dio.

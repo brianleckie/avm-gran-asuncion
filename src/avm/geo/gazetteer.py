@@ -20,6 +20,12 @@ COLUMNS = (
     "source_url",
 )
 
+# Decisiones revisadas con Oscar; no son reglas generales de desempate.
+# 1969335519 explicita is_in:town=San Lorenzo; el otro nodo no lo hace.
+# Es un punto de referencia provisional, no una coordenada de precisión parcelaria.
+REVIEWED_NODES = {("san_lorenzo", "san felipe"): 1969335519}
+EXCLUDED_GENERIC_NAMES = {("asuncion", "banado")}
+
 
 def normalize(value):
     return " ".join(
@@ -118,20 +124,53 @@ def build_rows(city, elements, city_shape):
     rows = []
     order = {"polygon_representative_point": 0, "osm_node": 1, "missing": 2}
     for name, candidates in sorted(groups.items()):
+        if (city, name) in EXCLUDED_GENERIC_NAMES:
+            issues.append(
+                {
+                    "city": city,
+                    "name": name,
+                    "reason": "generic_name_excluded",
+                    "osm_ids": [c[0]["id"] for c in candidates],
+                }
+            )
+            continue
         candidates.sort(key=lambda x: (order[x[3]], x[0]["type"], x[0]["id"]))
         # Dos polígonos o dos nodos homónimos requieren revisión, no selección silenciosa.
         best = candidates[0]
         same_rank = [c for c in candidates if c[3] == best[3]]
         if len(same_rank) > 1:
-            issues.append(
-                {
-                    "city": city,
-                    "name": name,
-                    "reason": "ambiguous_name",
-                    "osm_ids": [c[0]["id"] for c in candidates],
-                }
-            )
-            continue
+            selected_id = REVIEWED_NODES.get((city, name))
+            reviewed = [
+                c
+                for c in same_rank
+                if c[0]["type"] == "node"
+                and c[0]["id"] == selected_id
+                and normalize(c[0].get("tags", {}).get("is_in:town", "")) == city.replace("_", " ")
+            ]
+            if len(reviewed) == 1:
+                best = reviewed[0]
+                issues.append(
+                    {
+                        "city": city,
+                        "name": name,
+                        "reason": "reviewed_provisional_selection",
+                        "selected_osm_id": selected_id,
+                        "alternative_osm_ids": [
+                            c[0]["id"] for c in candidates if c[0]["id"] != selected_id
+                        ],
+                        "basis": "municipal containment and explicit is_in:town",
+                    }
+                )
+            else:
+                issues.append(
+                    {
+                        "city": city,
+                        "name": name,
+                        "reason": "ambiguous_name",
+                        "osm_ids": [c[0]["id"] for c in candidates],
+                    }
+                )
+                continue
         element, lat, lon, method = best
         rows.append(
             dict(

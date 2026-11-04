@@ -89,9 +89,10 @@
 
 ## F6 — Features geoespaciales
 - [ ] F6.1 (O) Gazetteer definitivo de barrios de las 4 ciudades, con fuente documentada
-  → extracción OSM en rama `f6-geo-base`: 169 entradas candidatas, 168 con ubicación tras
+  → extracción OSM en rama `f6-geo-base`: 169 entradas candidatas, todas con ubicación tras
   revisión de contención completa. Maramburé seleccionado provisionalmente contra límites OSM;
-  pendientes validación contra un padrón, homónimos San Felipe e I2 (interfaces.md ausente).
+  San Felipe seleccionado provisionalmente y Bañado genérico excluido. Comparación INE realizada;
+  44 nombres pendientes de correspondencia e I2 propuesto para revisión de Brian.
   Implementación y resultados en `docs/geo.md`; no se declara definitivo.
 - [ ] F6.2 (O) Centroides: polígonos OSM cuando existan; si no, Nominatim con caché. Registrar el método por barrio
   → reconstrucción de polígonos con Shapely y puntos interiores; nodos como fallback. Una entrada
