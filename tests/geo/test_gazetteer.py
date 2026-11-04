@@ -49,6 +49,26 @@ def test_homonyms_are_not_silently_selected():
     assert issues[0]["reason"] == "ambiguous_name"
 
 
+def test_full_polygon_containment_resolves_crossing_homonym():
+    def area(identifier, coords):
+        return {
+            "type": "way",
+            "id": identifier,
+            "tags": {"name": "Prueba"},
+            "geometry": [{"lon": x, "lat": y} for x, y in coords],
+        }
+
+    inside = area(1, [(1, 1), (2, 1), (2, 2), (1, 2), (1, 1)])
+    crossing = area(2, [(1, 1), (4, 1), (4, 2), (1, 2), (1, 1)])
+    city_shape = Polygon([(0, 0), (3, 0), (3, 3), (0, 3)])
+    # El punto representativo del polígono que cruza también está dentro: no basta.
+    assert city_shape.covers(polygon(crossing).representative_point())
+    rows, issues = build_rows("luque", [inside, crossing], city_shape)
+    assert len(rows) == 1 and rows[0]["osm_id"] == 1
+    assert issues[0]["reason"] == "polygon_crosses_city_boundary"
+    assert issues[0]["boundary_source"] == "osm"
+
+
 def test_polygon_with_hole_and_split_outer():
     element = {
         "type": "relation",

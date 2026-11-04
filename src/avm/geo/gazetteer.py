@@ -90,6 +90,19 @@ def build_rows(city, elements, city_shape):
         tags = element.get("tags", {})
         if not tags.get("name"):
             continue
+        shape = polygon(element)
+        if shape is not None and not city_shape.covers(shape):
+            issues.append(
+                {
+                    "city": city,
+                    "name": tags["name"],
+                    "osm_type": element["type"],
+                    "osm_id": element["id"],
+                    "reason": "polygon_crosses_city_boundary",
+                    "boundary_source": "osm",
+                }
+            )
+            continue
         lat, lon, method = location(element)
         if lat is not None and not city_shape.covers(Point(lon, lat)):
             issues.append(

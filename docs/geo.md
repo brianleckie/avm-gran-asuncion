@@ -45,6 +45,9 @@ Por ciudad se consultan `place=neighbourhood|suburb|quarter` y relaciones admini
 `admin_level=9|10|11`. `geo_summary.json` registra las etiquetas observadas por ciudad;
 su clasificación administrativa no se presume equivalente a un listado oficial de barrios.
 Los puntos fuera del polígono de la ciudad se excluyen y reportan para revisión.
+Los polígonos deben estar completamente cubiertos por el límite municipal OSM (`covers`);
+no basta que su punto representativo esté dentro. Los que cruzan se reportan y excluyen,
+sin recortarlos ni alterar sus coordenadas. `covers` incluye el borde compartido.
 
 Shapely reconstruye anillos outer/inner de relaciones y respeta huecos. Una geometría inválida
 no se corrige silenciosamente. Se usa `representative_point`, que produce un punto interior;
@@ -83,7 +86,10 @@ no deben interpretarse como conteos de instituciones sin deduplicación en F6.4.
 F6.4 deberá considerar efectos de borde: un POI más cercano podría quedar fuera del bbox.
 Las features por barrio no discriminan entre propiedades del mismo barrio (F6.7).
 
-## Resultado observado: snapshot 2026-11-03
+## Resultado inicial observado: snapshot 2026-11-03
+
+Los conteos de esta sección corresponden al algoritmo inicial. La revisión de contención
+completa al final de este documento actualiza la selección de Maramburé y el total.
 
 Extracción realizada el 3 de noviembre de 2026 en horario de Paraguay (las fechas UTC del
 manifest corresponden al 4 de noviembre). Seis consultas Overpass y una consulta puntual
@@ -178,3 +184,30 @@ Por ahora no se declaran verificados ni se incorporan al contrato inmobiliario.
 Resultado: pertenencia nominal de Maramburé a Luque y San Felipe a San Lorenzo corroborada;
 selección de geometrías y correspondencia de sectores de Asunción pendientes. Esta revisión
 no modifica coordenadas ni cierra por sí sola F6.1.
+
+## Revisión de contención completa de las geometrías
+
+Se aplicó la propuesta de Oscar de comprobar toda la geometría, además del punto interior.
+Se reutilizó el snapshot; no hubo consultas nuevas. Referencia territorial: relaciones
+municipales **OSM**, no cartografía oficial INE/TSJE. El Excel INE contiene códigos y nombres,
+pero no polígonos. No se presenta GADM como fuente oficial paraguaya.
+
+- Maramburé: relación `11271234` completamente cubierta por el límite OSM de Luque
+  (`6002474`). La vía `1383659528` lo intersecta pero no está completamente cubierta:
+  se excluye con `polygon_crosses_city_boundary`, sin recortarla. Tras esta exclusión
+  queda una sola candidata poligonal válida y se selecciona la relación; el nodo
+  `7683289217` también cae en Luque. La selección es provisional respecto de límites oficiales.
+- San Felipe: el nodo `1764370853` cae en Asunción; los nodos `1969335519` y `2979211659`
+  caen en San Lorenzo. La contención municipal distingue las ciudades pero no decide
+  entre los dos nodos de San Lorenzo. No se sustituyen por centroides de otros barrios.
+- Bañado: no se introduce un corte por latitud sin delimitación documentada. La entrada
+  genérica permanece sin ubicación; las entradas específicas conservan sus coordenadas OSM.
+
+Resultado actualizado: **169 entradas, 168 ubicadas**. Asunción: 76 (60 polígono, 15 nodo,
+1 sin ubicación); Luque: 36 (28 polígono, 8 nodo); San Lorenzo: 41 nodos;
+Fernando de la Mora: 16 (15 polígono, 1 nodo). POIs sin cambios.
+
+Prueba de regresión: un polígono cuyo punto interior cae dentro de la ciudad pero que cruza
+su límite debe excluirse, permitiendo seleccionar el candidato completamente contenido.
+Las 14 pruebas geo pasan sin red. F6.1 sigue pendiente de validar el universo oficial y
+acordar I2; San Felipe de San Lorenzo continúa en revisión y Bañado genérico sin centroide.
