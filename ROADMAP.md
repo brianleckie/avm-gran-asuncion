@@ -89,8 +89,15 @@
 
 ## F6 — Features geoespaciales
 - [ ] F6.1 (O) Gazetteer definitivo de barrios de las 4 ciudades, con fuente documentada
+  → primera extracción OSM en rama `f6-geo-base`: 168 entradas candidatas, 167 con ubicación;
+  pendientes validación contra un padrón, dos homónimos y acuerdo de I2 (interfaces.md ausente).
+  Implementación y resultados en `docs/geo.md`; no se declara definitivo.
 - [ ] F6.2 (O) Centroides: polígonos OSM cuando existan; si no, Nominatim con caché. Registrar el método por barrio
+  → reconstrucción de polígonos con Shapely y puntos interiores; nodos como fallback. Una entrada
+  genérica sin ubicación (Bañado), consulta Nominatim ambigua documentada sin asignación arbitraria.
 - [ ] F6.3 (O) Snapshot de POIs vía Overpass, con fecha: avenidas principales (primary/trunk), shoppings, colegios, universidades, hospitales y parques
+  → snapshot local `data/raw/osm/2026-11-03/`, seis consultas Overpass con caché y manifest;
+  falta revisión del PR. Datos fuera de Git, atribución ODbL en docs/geo.md.
 - [ ] F6.4 (O) Features: distancia centroide → POI más cercano por categoría, conteo de POIs en radio R y distancia a centros de empleo (microcentro, eje corporativo)
 - [ ] F6.5 (O) Si hay lat/lon, mismas features con precisión `aproximada` o `exacta` (hoy ninguna fuente demostró `exacta`, ADR-006). Flag en el modelo
 - [ ] F6.6 (O) (Opcional) Zona fiscal catastral por barrio como feature o benchmark
