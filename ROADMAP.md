@@ -87,8 +87,8 @@
   → hecho (S2): piscina y quincho primero por el tag del portal (SI/NO) y luego por regex; a estrenar, barrio cerrado/condominio, ascensor y calle (pavimento/empedrado/tierra) por regex sobre título + descripción, con negación explícita. `garages` queda vacío en el 100 % (el parser no lo extrae): no sirve como feature.
 - [x] F4.6 (B) Reglas de outliers: USD/m² fuera de rango plausible por ciudad, errores de tipeo, alquileres colados
   → hecho con 4 reglas a priori y fijas, aprobadas el 2026-11-05 (`avm.pipeline.outliers`): m² construidos < 15 o > 600 (departamento) / 1.000 (dúplex) / 2.000 (casa), y USD/m² < 150 o > 8.000 (igual para los tres tipos). Son supuestos del equipo, no datos de mercado, y no se recalibran mirando la distribución: si una descarta mucho se informa, no se cambia. Sin rangos por ciudad ni estadísticos de la distribución (leakage).
-- [x] F4.7 (B) Reporte de calidad por snapshot: % de nulos por campo, descartes por regla y cobertura por barrio
-  → hecho (S2) como `quality_report.md` por corrida (solo agregados): embudo por regla, target por tipo y ciudad, barrio por ciudad, clusters y origen tag/regex. No incluye todavía el % de nulos por campo.
+- [ ] F4.7 (B) Reporte de calidad por snapshot: % de nulos por campo, descartes por regla y cobertura por barrio
+  → hecho (S2) como `quality_report.md` por corrida (solo agregados): embudo por regla, target por tipo y ciudad, barrio por ciudad, clusters y origen tag/regex. **Parcial**: falta el % de nulos por campo, por eso la casilla sigue sin tildar.
 
 ## F5 — Deduplicación
 - [x] F5.1 (B) Duplicados exactos: mismo id/url dentro de una fuente
