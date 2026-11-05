@@ -152,10 +152,14 @@
   → `tests/api/`: 422 por ciudad/tipo/superficie fuera del contrato, warnings, 503 sin predictor, fake + production, rate limit, CORS, metadata sin rutas locales.
 
 ## F12 — Frontend (React)
-- [ ] F12.1 (B) Formulario: ciudad → barrio (dependiente), tipo, m², dormitorios, baños, cocheras y amenities
-- [ ] F12.2 (B) Resultado: USD/m², valor total, intervalo visual, nivel de cobertura y leyenda "precio de oferta estimado"
+- [x] F12.1 (B) Formulario: ciudad → barrio (dependiente), tipo, m², dormitorios, baños, cocheras y amenities
+  → `web/` (React + Vite + TypeScript, sin librerías de UI). Cocheras no se pide: viaja como `null`. Amenities como Sí / No / No sé (No sé = `null`), más tipo de calle opcional. Probado a mano contra el `FakePredictor`.
+- [x] F12.2 (B) Resultado: USD/m², valor total, intervalo visual, nivel de cobertura y leyenda "precio de oferta estimado"
+  → La cobertura en palabras sale de `coverage_nominal` de `/model-info` (si falta, de la respuesta); banner fijo si `is_test_model`. Las métricas se muestran solo si `metadata.metrics` las trae (claves fijadas en `docs/interfaces.md`, I4).
 - [ ] F12.3 (B) Comparables y warnings visibles
-- [ ] F12.4 (B) Página "Metodología y limitaciones", que también sirve para la defensa
+  → parcial: warnings visibles en lenguaje claro; comparables (F11.4) quedan fuera por plazo.
+- [x] F12.4 (B) Página "Metodología y limitaciones", que también sirve para la defensa
+  → `web/src/Methodology.tsx`; los números (n, fecha, métricas) vienen solo de `/model-info`, el texto no tiene cifras fijas.
 
 ## F13 — Deploy
 - [ ] F13.1 (B) API en Railway y frontend en Vercel
