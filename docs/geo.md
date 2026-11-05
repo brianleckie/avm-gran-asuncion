@@ -241,3 +241,14 @@ No se incorporaron coordenadas ni equivalencias inventadas para mejorar esos con
 Esta versión es utilizable para continuar con F6.4, con selecciones provisionales explícitas.
 No se marca F6.1 como padrón oficial definitivo. El formato de I2 continúa como propuesta
 para revisión de Brian; no se atribuye a él una aprobación que todavía no dio.
+
+## Variables de barrio y respaldo por ciudad (F6.4 y F6.7)
+
+La [propuesta I3](interfaces.md) define las columnas, radios y unidades. Se generaron
+169 filas de barrio y cuatro de ciudad con el snapshot O1. El reporte detectó 14 filas
+expuestas al borde de la consulta y un objeto de parque sin geometría utilizable.
+Los conteos afectados pueden quedar por debajo del valor de una consulta más amplia.
+
+Las variables son iguales para todos los inmuebles asignados a un mismo barrio. La fila
+de ciudad es todavía más gruesa. Esto limita la capacidad de distinguir ubicaciones
+dentro de cada unidad y debe considerarse al evaluar el modelo.

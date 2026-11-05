@@ -101,9 +101,10 @@
   → snapshot local `data/raw/osm/2026-11-03/`, seis consultas Overpass con caché y manifest;
   falta revisión del PR. Datos fuera de Git, atribución ODbL en docs/geo.md.
 - [ ] F6.4 (O) Features: distancia centroide → POI más cercano por categoría, conteo de POIs en radio R y distancia a centros de empleo (microcentro, eje corporativo)
+  → Entrega O2 con referencia única de Asunción según OSCAR.md. Propuesta I3 en docs/interfaces.md.
 - [ ] F6.5 (O) Si hay lat/lon, mismas features con precisión `aproximada` o `exacta` (hoy ninguna fuente demostró `exacta`, ADR-006). Flag en el modelo
 - [ ] F6.6 (O) (Opcional) Zona fiscal catastral por barrio como feature o benchmark
-- [ ] F6.7 (O) Documentar la limitación: las features son a nivel barrio y dentro de un mismo barrio no discriminan entre propiedades
+- [x] F6.7 (O) Documentar la limitación: las features son a nivel barrio y dentro de un mismo barrio no discriminan entre propiedades
 
 ## F7 — Análisis exploratorio
 - [ ] F7.1 (B/O) Distribuciones de USD/m² por ciudad, tipo y barrio
