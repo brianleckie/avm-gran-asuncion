@@ -28,6 +28,10 @@ cd web; npm install; Copy-Item .env.example .env.local; npm run dev
 
 Con el modelo de Oscar (`models/<version>/`): `AVM_PREDICTOR=model` y `AVM_MODEL_DIR=models\<version>`. Variables y comportamiento en `src/avm/api/config.py`.
 
+## Deploy
+
+API en Railway (`Dockerfile`, `railway.toml`) y web en Vercel (`web/`). Sin modelo, la API queda viva (`/live` 200) y no lista (`/health` 503). Paso a paso, variables y smoke test (`just smoke <url>`) en [docs/deploy.md](docs/deploy.md); cómo llega el modelo a producción, en [ADR-008](docs/adr/008-modelo-en-produccion.md).
+
 ## Más información
 
 - [ROADMAP.md](ROADMAP.md): tareas por fase, con responsable.

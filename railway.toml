@@ -1,0 +1,11 @@
+# Config as code de Railway (API). Las variables AVM_* se cargan en el dashboard: docs/deploy.md.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Liveness, NO /health: sin modelo /health da 503 y Railway daría el deploy por fallido (ADR-008).
+healthcheckPath = "/live"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
