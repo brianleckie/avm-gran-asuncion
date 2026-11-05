@@ -24,7 +24,9 @@ Si sos el agente de Oscar, leé también `docs/handoff/OSCAR.md`.
   OpenStreetMap (Overpass/Nominatim) sí, con caché local, user-agent identificable y respetando sus
   políticas de uso (Nominatim: máximo 1 request por segundo). Atribución "© OpenStreetMap
   contributors" en todo lo que use esos datos.
-- **Datos.** Nada de `data/` ni `models/` se commitea. Los docs y reportes publican solo agregados.
+- **Datos.** Nada de `data/` ni `models/` se commitea, salvo `deploy/model/` (ADR-008: solo la
+  versión final del modelo, validada por `scripts/check_deploy_model.py`). Los docs y reportes
+  publican solo agregados.
 - **Git.** Nunca push a `main`, nunca force-push, nunca mergear PRs. Una rama por tarea
   (`f8.6-lightgbm`), PR hacia `main`, el merge lo hace un humano.
 
