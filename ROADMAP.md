@@ -57,6 +57,7 @@
 - [x] F3.4 (B) Parser por fuente → `RawListing`. **Tests con fixtures HTML guardados**, porque los selectores se rompen
   → solo Clasipar (InfoCasas descartada): `src/avm/scraping/sources/clasipar.py`, con selectores en `docs/sources.md` §2.8 y 3 fixtures de detalle y 1 de listado. El detalle no trae la operación ni el tipo de anunciante del aviso (son de los relacionados): se toman de la tarjeta (`ListingRef`). **D2**: `content_hash` = sha256 de un JSON canónico del contenido, sin `scraped_at` ni atributos volátiles. Los tests usan valores escritos a mano desde el HTML. Crudo local borrado (`docs/sources.md` §8.3)
   → seguimiento (piloto F3.3): el detalle trae `Superficie construida` y `Superficie de terreno m2` como `span.ads_tag` (23,8 % y 22,5 % de 227 avisos, con el número solo). El parser los deja en `attributes_raw` y debería llevarlos a `built_area_raw` y `land_area_raw`, que el contrato ya tiene (ver `docs/pilot/2026-10-06.md` §6 y §7)
+  → S2 (2026-11-05): los dos tags pasan a `built_area_raw` y `land_area_raw` (comparación con `casefold`, valor por `_scrub`, la etiqueta mapeada sale de `attributes_raw`; ninguna otra). `content_hash` cambia una vez en los avisos con tag (`docs/sources.md` §2.8). `detalle_4.html` es un detalle del crawl con la estructura real y todo el texto inventado.
 - [ ] F3.5 (B) Excluir datos personales: teléfonos, nombres de agentes y emails no se persisten
   → cubierto en lo esencial por D1 y D3 (caché y `RawListing` sanitizados). Pendiente: nombres de personas en texto libre (título o descripción), dominios sin esquema ("sitio.com.py") y los falsos negativos del regex (por ejemplo "981 123 456", sin el `0`)
   → piloto F3.3 (227 avisos, solo conteos): 1 descripción con un indicio de nombre de persona ("Dr./Dra."), 1 con un teléfono reemplazado por `[TELEFONO]` y 58 con un link a un tercero reemplazado por `[URL]`. Sigue sin poder detectarse un nombre escrito en texto libre (`docs/pilot/2026-10-06.md` §10; ADR-007)
@@ -67,25 +68,34 @@
 - [ ] F3.8 (B) Monitor de salud: si un parser devuelve más de X% de campos nulos, falla ruidosamente
 
 ## F4 — Limpieza y normalización
-- [ ] F4.1 (B) Parseo de precios: "USD 150.000", "U$S 150 mil", "Gs. 1.200.000.000", "consultar" → null
+- [x] F4.1 (B) Parseo de precios: "USD 150.000", "U$S 150 mil", "Gs. 1.200.000.000", "consultar" → null
   → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
   → F3.1: 641/642 strings reales parseados (el que falta es "Consultar precio."), ninguno con `currency=None`. 13 montos bajos para una venta en Clasipar quedan para F4.6 (ver `docs/sources.md` §5; cifras corregidas el 2026-10-06, §8.1)
   → piloto F3.3: 223/227 precios parseados (98,2 %), ninguno con `currency=None` (132 USD y 91 PYG). Los 4 restantes son "Gs. 0" (monto cero), para F4.6 (`docs/pilot/2026-10-06.md` §4)
-- [ ] F4.2 (B) Conversión a USD con cotización BCP de la fecha de scrape, guardando moneda y monto originales
+  → hecho en `avm.pipeline.clean.raw_to_row` (S2): `parse_price` sobre `price_raw`; se descartan y cuentan por separado el precio sin monto, el monto cero, la moneda desconocida y el "desde"/rango. `price_provenance` y `currency_provenance` = `estructurado` (vienen del campo de precio del portal).
+- [x] F4.2 (B) Conversión a USD con cotización BCP de la fecha de scrape, guardando moneda y monto originales
   → decisión pendiente: qué hacer con `currency=None` (precio sin moneda explícita). `parse_price` no la adivina por magnitud; inferirla o descartar el aviso se resuelve acá, en el pipeline
+  → hecho con un **desvío por plazo** (ADR-004, sección del 2026-11-05): una única cotización de casa de cambios (Cambios Chaco, punto medio) para todos los snapshots, pasada en cada corrida (`--fx-pyg-per-usd`, `--fx-date`, `--fx-source`), en lugar de la del BCP por fecha de scrape. `currency=None` se descarta (alternativa A del ADR-005, que sigue sin decidirse): queda en limitaciones.
 - [ ] F4.3 (B) m²: resolver construidos vs terreno, detectar intercambios y unidades erróneas
   → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
   → F3.1: el número sale bien en todos los strings reales, pero en Clasipar la superficie solo aparece en texto libre y `kind` suele quedar en None; hay un caso dudoso ("940M2 C/ CONSTRUCCION") y "desde N m2" no se marca (ver `docs/sources.md` §5)
   → piloto F3.3 (227 avisos): 73,6 % tiene alguna superficie en el texto y 33,9 % una de tipo `construida` (casas 42,1 %, dúplex 50,7 %, departamentos 9,2 %); el 59,2 % de los departamentos solo trae superficies `kind=None`. Con "Terreno: N m² Construcción: N m²" en la misma línea gana la etiqueta del número siguiente. El tag estructurado `Superficie construida` suma cobertura (ver F3.5). Patrones de formato en `docs/pilot/2026-10-06.md` §5
+  → parcial (S2): precedencia tag > texto con `kind=construida`; si ambos existen y difieren más de 10 % (relativo al tag) se descarta el aviso; `kind=None` NO se acepta como construido (decisión por plazo, queda en limitaciones; afecta sobre todo a departamentos). Sin detección de unidades erróneas más allá de los outliers de F4.6.
 - [ ] F4.4 (B) Normalización de barrios: gazetteer, alias ("V. Morra", "Villa Morra") y fuzzy matching (rapidfuzz). Lo que no matchea va a revisión manual, no se asigna en silencio
-- [ ] F4.5 (B) Extracción de features desde la descripción (regex primero): piscina, quincho, a estrenar, condominio/barrio cerrado, **pavimento/empedrado/tierra**, ascensor, amenities
-- [ ] F4.6 (B) Reglas de outliers: USD/m² fuera de rango plausible por ciudad, errores de tipeo, alquileres colados
-- [ ] F4.7 (B) Reporte de calidad por snapshot: % de nulos por campo, descartes por regla y cobertura por barrio
+  → implementado en `avm.pipeline.neighborhood` (S2): exacto → alias → fuzzy (`rapidfuzz.fuzz.ratio` ≥ 90, dentro de la ciudad; el empate entre barrios es ambiguo y no se asigna). Falta correrlo con el gazetteer real de Oscar (I2) y la revisión manual de lo que no matchea; las corridas de S2 fueron con `--gazetteer none`.
+- [x] F4.5 (B) Extracción de features desde la descripción (regex primero): piscina, quincho, a estrenar, condominio/barrio cerrado, **pavimento/empedrado/tierra**, ascensor, amenities
+  → hecho (S2): piscina y quincho primero por el tag del portal (SI/NO) y luego por regex; a estrenar, barrio cerrado/condominio, ascensor y calle (pavimento/empedrado/tierra) por regex sobre título + descripción, con negación explícita. `garages` queda vacío en el 100 % (el parser no lo extrae): no sirve como feature.
+- [x] F4.6 (B) Reglas de outliers: USD/m² fuera de rango plausible por ciudad, errores de tipeo, alquileres colados
+  → hecho con 4 reglas a priori y fijas, aprobadas el 2026-11-05 (`avm.pipeline.outliers`): m² construidos < 15 o > 600 (departamento) / 1.000 (dúplex) / 2.000 (casa), y USD/m² < 150 o > 8.000 (igual para los tres tipos). Son supuestos del equipo, no datos de mercado, y no se recalibran mirando la distribución: si una descarta mucho se informa, no se cambia. Sin rangos por ciudad ni estadísticos de la distribución (leakage).
+- [x] F4.7 (B) Reporte de calidad por snapshot: % de nulos por campo, descartes por regla y cobertura por barrio
+  → hecho (S2) como `quality_report.md` por corrida (solo agregados): embudo por regla, target por tipo y ciudad, barrio por ciudad, clusters y origen tag/regex. No incluye todavía el % de nulos por campo.
 
 ## F5 — Deduplicación
-- [ ] F5.1 (B) Duplicados exactos: mismo id/url dentro de una fuente
+- [x] F5.1 (B) Duplicados exactos: mismo id/url dentro de una fuente
+  → hecho (S2): misma `(source, source_id)` → una fila, la de `scraped_at` más reciente, antes de los filtros.
 - [ ] F5.2 (B) Near-duplicates cross-portal: blocking por (ciudad, barrio, tipo, dormitorios), luego similitud de m² ±3%, precio ±5% y texto (TF-IDF/MinHash)
-- [ ] F5.3 (B) Asignar `cluster_id` y elegir un representante por cluster. El `cluster_id` se usa en los splits (F8)
+- [x] F5.3 (B) Asignar `cluster_id` y elegir un representante por cluster. El `cluster_id` se usa en los splits (F8)
+  → versión simple (S2): casi-duplicados dentro de Clasipar por (ciudad, tipo, barrio, m² redondeado a entero) con precio a ±1 % entre vecinos (single-linkage); se dejan todas las filas del cluster y no se elige representante. Con `--gazetteer none` el barrio es vacío para todos: agrupa de más (lado seguro para leakage).
 - [ ] F5.4 (B/O) Validar el dedup contra los duplicados inyectados en el sintético (precision/recall)
 
 ## F6 — Features geoespaciales
