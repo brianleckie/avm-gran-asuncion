@@ -99,13 +99,23 @@
 - [ ] F5.4 (B/O) Validar el dedup contra los duplicados inyectados en el sintético (precision/recall)
 
 ## F6 — Features geoespaciales
-- [ ] F6.1 (O) Gazetteer definitivo de barrios de las 4 ciudades, con fuente documentada
-- [ ] F6.2 (O) Centroides: polígonos OSM cuando existan; si no, Nominatim con caché. Registrar el método por barrio
-- [ ] F6.3 (O) Snapshot de POIs vía Overpass, con fecha: avenidas principales (primary/trunk), shoppings, colegios, universidades, hospitales y parques
-- [ ] F6.4 (O) Features: distancia centroide → POI más cercano por categoría, conteo de POIs en radio R y distancia a centros de empleo (microcentro, eje corporativo)
+- [x] F6.1 (O) Gazetteer definitivo de barrios de las 4 ciudades, con fuente documentada
+  → extracción OSM en rama `f6-geo-base`: 169 entradas candidatas, todas con ubicación tras
+  revisión de contención completa. Maramburé seleccionado provisionalmente contra límites OSM;
+  San Felipe seleccionado provisionalmente y Bañado genérico excluido. Comparación INE realizada;
+  44 nombres pendientes de correspondencia e I2 propuesto para revisión de Brian.
+  Implementación y resultados en `docs/geo.md`; no se declara definitivo.
+- [x] F6.2 (O) Centroides: polígonos OSM cuando existan; si no, Nominatim con caché. Registrar el método por barrio
+  → reconstrucción de polígonos con Shapely y puntos interiores; nodos como fallback. Una entrada
+  genérica sin ubicación (Bañado), consulta Nominatim ambigua documentada sin asignación arbitraria.
+- [x] F6.3 (O) Snapshot de POIs vía Overpass, con fecha: avenidas principales (primary/trunk), shoppings, colegios, universidades, hospitales y parques
+  → snapshot local `data/raw/osm/2026-11-03/`, seis consultas Overpass con caché y manifest;
+  falta revisión del PR. Datos fuera de Git, atribución ODbL en docs/geo.md.
+- [x] F6.4 (O) Features: distancia centroide → POI más cercano por categoría, conteo de POIs en radio R y distancia a centros de empleo (microcentro, eje corporativo)
+  → Entrega O2 con referencia única de Asunción según OSCAR.md. Propuesta I3 en docs/interfaces.md.
 - [ ] F6.5 (O) Si hay lat/lon, mismas features con precisión `aproximada` o `exacta` (hoy ninguna fuente demostró `exacta`, ADR-006). Flag en el modelo
 - [ ] F6.6 (O) (Opcional) Zona fiscal catastral por barrio como feature o benchmark
-- [ ] F6.7 (O) Documentar la limitación: las features son a nivel barrio y dentro de un mismo barrio no discriminan entre propiedades
+- [x] F6.7 (O) Documentar la limitación: las features son a nivel barrio y dentro de un mismo barrio no discriminan entre propiedades
 
 ## F7 — Análisis exploratorio
 - [ ] F7.1 (B/O) Distribuciones de USD/m² por ciudad, tipo y barrio

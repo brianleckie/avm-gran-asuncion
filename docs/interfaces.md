@@ -71,19 +71,40 @@ Clave única: (`city`, `neighborhood`). Atribución obligatoria: "© OpenStreetM
 
 ## I3. `geo_features.csv`: features espaciales por barrio y por ciudad
 
-Una fila por barrio de I2 (`geo_precision = barrio`) **más una fila por ciudad** con `neighborhood`
-vacío (`geo_precision = ciudad`), que es el fallback cuando el barrio no matcheó (ADR-003).
+`data/reference/geo_features.csv` es UTF-8 y usa coma como separador. Incluye una fila
+por `(city, neighborhood)` del catálogo de O1 y una fila por ciudad con `neighborhood`
+vacío. Las claves usan los identificadores de `avm.contract.enums.City` y los nombres
+normalizados de O1. `geo_precision` vale `barrio` o `ciudad` según el origen espacial.
 
-| Columna | Descripción |
-|---|---|
-| `city`, `neighborhood`, `geo_precision` | Clave del join con I1 |
-| `dist_cbd_km` | Distancia al centro de referencia (el punto elegido y su fuente, en `docs/geo.md`) |
-| `dist_<categoria>_km` | Distancia al POI más cercano: `primary_road`, `mall`, `school`, `university`, `hospital`, `park` |
-| `n_<categoria>_<R>km` | Cantidad de POIs en el radio R (`n_school_1km`, `n_mall_2km`, `n_hospital_2km`, `n_park_1km`) |
+Orden de columnas:
 
-Se pueden agregar columnas `dist_*` o `n_*` sin romper nada; quitar o renombrar requiere avisar.
-Limitación a documentar (F6.7): son features **de barrio**, iguales para todas las propiedades del
-mismo barrio.
+1. `city`, `neighborhood`, `geo_precision`, `dist_cbd_km`.
+2. `dist_<cat>_km` para `road`, `mall`, `school`, `university`, `hospital`, `park`, en ese orden.
+3. `n_<cat>_<R>km` para esas categorías, con `R` igual a `1`, `3` y `5` en cada categoría.
+
+Los radios se proponen para comparar proximidad inmediata y acceso en el entorno ampliado.
+Las distancias son números en kilómetros y quedan vacías si el snapshot carece de objetos
+utilizables de esa categoría. Los conteos son enteros no negativos. La fila de respaldo usa
+el punto representativo del polígono municipal OSM. Para integrar, buscar primero la clave
+de barrio y usar la fila con barrio vacío cuando la clave no esté disponible.
+
+La distancia a vías usa el vértice más cercano. Los demás objetos usan su nodo o el punto
+representativo del polígono. Se cuenta cada objeto OSM una vez por categoría y radio, incluso
+si varios vértices de la misma vía caen dentro del radio. Una institución con varias
+representaciones OSM puede aportar varios objetos. Las distancias son en línea geodésica
+sobre una esfera, sin red vial ni tiempos de viaje.
+
+`dist_cbd_km` usa el nodo OSM `249854726`, miembro `admin_centre` del límite de Asunción
+en el snapshot O1. Es el punto de referencia único pedido para el centro de la capital.
+
+```powershell
+uv run python scripts/build_geo_features.py --snapshot data/raw/osm/2026-11-03
+```
+
+El comando usa las respuestas O1 guardadas. `geo_features.json` incluye hashes de los
+insumos, objetos descartados por geometría y casos expuestos al borde del bbox. Cada
+caso indica qué radios pueden estar truncados y en qué categorías la distancia mínima
+podría cambiar con una extracción mayor. El CSV conserva las métricas observadas.
 
 ## I4. Artefacto del modelo y `Predictor`
 
@@ -146,3 +167,5 @@ de punta a punta, y después se reemplaza por LightGBM + CQR sin cambiar la inte
 ## Historial
 - 2026-11-03: versión inicial (I1–I4).
 - 2026-11-05: I4 fija el objeto `metrics` de `metadata.json` (`mdape`, `pe10`, `pe20`, `interval_coverage`, `mean_interval_width`, `n_test`; fracciones, con el ancho relativo a la predicción) y el campo opcional `is_test_model`. Propuesto por Brian para la API/web (F11/F12); Oscar tiene que confirmarlo en el PR.
+
+- 2026-11-05: I3 usa `road` (primary y trunk) en lugar de `primary_road`; conteos para las seis categorías en radios 1, 3 y 5 km. Oscar registra el cambio aceptado por Brian y confirma las claves metrics de I4. Brian actualizará el generador sintético. I2 se alinea al formato de main, conserva nombres OSM y tildes, `source` y métodos `osm_polygon`/`osm_point`.

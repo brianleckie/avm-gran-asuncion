@@ -1,0 +1,33 @@
+{
+  "source": "Overpass snapshot 2026-11-03; © OpenStreetMap contributors, ODbL",
+  "elements": [
+    {
+      "type": "node",
+      "id": 1764370853,
+      "lat": -25.2640089,
+      "lon": -57.6309601,
+      "tags": {
+        "admin_level": "10",
+        "is_in:city": "Asunción",
+        "name": "San Felipe",
+        "place": "neighbourhood",
+        "ref": "21"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1764370855,
+      "lat": -25.2593246,
+      "lon": -57.6137697,
+      "tags": {
+        "admin_level": "10",
+        "is_in:city": "Asunción",
+        "name": "Banco San Miguel",
+        "place": "neighbourhood",
+        "ref": "49",
+        "wikidata": "Q5718021",
+        "wikipedia": "es:Banco San Miguel"
+      }
+    }
+  ]
+}
