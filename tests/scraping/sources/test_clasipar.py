@@ -39,8 +39,8 @@ URL_3 = (
     f"{PORTAL}/inmuebles/departamentos/"
     "departamento-de-2-dormitorios-68-m2-en-edificio-marlin-san-lorenzo-2214004"
 )
-# detalle_4: markup real de un detalle de la caché con el texto neutralizado (ver el comentario del
-# caso en CASES). El id, el título y la zona son inventados.
+# detalle_4: estructura real de un detalle de la caché con todo el texto inventado (ver el
+# comentario del caso en CASES).
 URL_4 = f"{PORTAL}/inmuebles/casas/casa-de-prueba-con-piscina-en-luque-9000001"
 
 
@@ -405,9 +405,12 @@ CASES = {
             },
         },
     ),
-    # Origen: un detalle de la caché del piloto (2026-10-06) con los dos tags de superficie. Se
-    # conservó el markup real de la ficha, los tags y el precio, y se inventaron el título, la
-    # descripción, la zona, el id, la foto y las coordenadas. Los valores se leyeron a mano.
+    # Origen: un detalle de la caché del crawl (2026-11-04) con los dos tags de superficie. Se
+    # conservó la estructura real de la página (head, 14 <meta>, JSON-LD, ficha, tags, descripción,
+    # 3 avisos relacionados) y se inventó TODO el texto: título, descripción, zona, id, precio,
+    # valores de los tags, <meta>, JSON-LD, tooltips y avisos relacionados. Se verificó que no
+    # comparte ninguna secuencia de 6 palabras con la caché, salvo la plantilla del portal. Los
+    # valores de abajo se leyeron a mano del HTML (ficha de 5 filas: sin "Departamento:").
     "detalle_4": (
         "detalle_4.html",
         URL_4,
@@ -426,14 +429,13 @@ CASES = {
             "latitude_raw": "-25.300000",  # JSON-LD House (inventadas)
             "longitude_raw": "-57.600000",
             "published_at_raw": "29/09/2026",  # ficha "Publicado el:"
-            # Tags restantes y la ficha "Departamento:". Los dos de superficie NO están: van a
-            # built_area_raw y land_area_raw.
+            # Tags restantes (el detalle no trae "Departamento:" en la ficha). Los dos de superficie
+            # NO están: van a built_area_raw y land_area_raw.
             "attributes_raw": {
                 "Amoblado": "SI",
                 "Habitación en suite": "1",
                 "Piscina": "SI",
                 "Quincho": "SI",
-                "Departamento": "Central",
             },
         },
     ),

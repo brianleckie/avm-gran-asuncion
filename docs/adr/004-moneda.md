@@ -27,3 +27,10 @@ El target del modelo es `log(USD/m²)` (F8.1), así que todos los precios tienen
 - **Cotización de la fecha de publicación del aviso.** Es más fiel en teoría, pero necesita una fecha de publicación confiable en cada aviso y una serie histórica de cotizaciones. [pendiente de F3.1: qué fuentes exponen la fecha de publicación]
 - **Una cotización fija para todo el dataset.** Es simple y estable, pero queda desactualizada respecto de la fecha del scrape y borra la variación entre snapshots.
 - **Promedio de la cotización sobre una ventana de fechas.** Suaviza el ruido, pero agrega un parámetro (el tamaño de la ventana) sin criterio disponible para elegirlo.
+
+## Desvío por plazo (2026-11-05)
+Para el primer `dataset.csv` real (`just build-dataset`, F4.2) se usa **una única cotización de una casa de cambios** (Cambios Chaco S.A., punto medio entre compra 5.980 y venta 6.190, del 04/11/2026) **para todos los snapshots**, en lugar de la cotización del BCP a la fecha de scrape de cada aviso (decisión 2 de este ADR y F4.2 del ROADMAP). El valor, la fuente y la fecha se pasan explícitos en cada corrida (`--fx-pyg-per-usd`, `--fx-source`, `--fx-date`) y quedan en el `quality_report.md` y, aviso por aviso, en `fx_rate_pyg_per_usd` y `fx_date` del `Listing`.
+- **Impacto acotado a dos cosas:** (a) el spread entre compra y venta: el punto medio queda a ±1,7 % de cada extremo; (b) la variación del tipo de cambio entre el 06/10 (piloto) y el 04/11 (crawl): los avisos en PYG del piloto se convierten con la cotización del 04/11, no con la del 06/10. La magnitud de (b) no se midió: no hay serie de cotizaciones en el repo.
+- **Los avisos en USD no se ven afectados.**
+- **Queda en limitaciones** (docs de metodología): el USD de un aviso en PYG depende de esta cotización única. Rehacer el dataset con la cotización del BCP por fecha de scrape sigue siendo posible: el monto y la moneda originales se conservan (`price_amount`, `price_currency`).
+- El estado de este ADR sigue siendo *propuesto*; esta sección solo documenta el desvío de la primera corrida.
