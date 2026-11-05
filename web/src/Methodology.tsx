@@ -136,13 +136,15 @@ export function Methodology({ info }: { info: InfoState }) {
       <h2>Otras limitaciones</h2>
       <ul>
         <li>
-          <strong>Departamentos:</strong> hay menos datos utilizables que para casas, porque la
-          superficie publicada suele ser ambigua y esos avisos se descartaron. Las estimaciones de
-          departamentos tienen más incertidumbre.
+          <strong>Departamentos:</strong> hay menos datos que para casas. En los avisos de
+          departamentos, cuando la superficie publicada no dice si es construida o de terreno, se
+          tomó la primera como superficie construida (un departamento no tiene terreno propio),
+          pero no se verificó aviso por aviso. Las estimaciones de departamentos tienen más
+          incertidumbre.
         </li>
         <li>
-          <strong>Barrios con pocos avisos:</strong> el sistema lo indica con una advertencia y el
-          rango es menos confiable.
+          <strong>Barrios con pocos avisos:</strong> el rango es menos confiable. Cuando el modelo
+          detecta pocos datos, lo informa con una advertencia en el resultado.
         </li>
         <li>
           La superficie que se usa es la construida; el modelo no ve fotos, estado de conservación,

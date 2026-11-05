@@ -58,8 +58,8 @@ export function ResultCard({ result, info }: { result: PredictionResponse; info:
         <div className="warnings">
           <h2>Tené en cuenta</h2>
           <ul>
-            {result.warnings.map((warning) => (
-              <li key={warning.code}>{warningText(warning.code, warning.message)}</li>
+            {result.warnings.map((warning, index) => (
+              <li key={`${warning.code}-${index}`}>{warningText(warning.code, warning.message)}</li>
             ))}
           </ul>
         </div>
