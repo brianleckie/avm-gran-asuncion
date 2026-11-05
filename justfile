@@ -58,9 +58,8 @@ build-dataset fx_rate fx_date fx_source gazetteer +snapshots:
 
 # --- Todavía sin implementación (cada receta apunta a su tarea del ROADMAP) ---
 
-train:
-    @echo "No implementado, ver ROADMAP F8"
-    @exit 1
+train dataset geo gazetteer model out:
+    uv run python scripts/train.py --dataset "{{dataset}}" --geo "{{geo}}" --gazetteer "{{gazetteer}}" --model {{model}} --out "{{out}}"
 
 evaluate:
     @echo "No implementado, ver ROADMAP F10"
