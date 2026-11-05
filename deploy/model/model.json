@@ -1,0 +1,74 @@
+{
+  "kind": "baseline",
+  "min_clusters": 20,
+  "statistics": {
+    "[\"\", \"\", \"\"]": {
+      "median": 6.87105,
+      "n_clusters": 909
+    },
+    "[\"asuncion\", \"\", \"\"]": {
+      "median": 7.1246849999999995,
+      "n_clusters": 354
+    },
+    "[\"fernando_de_la_mora\", \"\", \"\"]": {
+      "median": 6.787943,
+      "n_clusters": 145
+    },
+    "[\"luque\", \"\", \"\"]": {
+      "median": 6.8040959999999995,
+      "n_clusters": 266
+    },
+    "[\"san_lorenzo\", \"\", \"\"]": {
+      "median": 6.5656645000000005,
+      "n_clusters": 144
+    },
+    "[\"asuncion\", \"casa\", \"\"]": {
+      "median": 6.7017714999999995,
+      "n_clusters": 126
+    },
+    "[\"asuncion\", \"departamento\", \"\"]": {
+      "median": 7.4614625,
+      "n_clusters": 150
+    },
+    "[\"asuncion\", \"duplex\", \"\"]": {
+      "median": 7.012504,
+      "n_clusters": 78
+    },
+    "[\"fernando_de_la_mora\", \"casa\", \"\"]": {
+      "median": 6.568266,
+      "n_clusters": 71
+    },
+    "[\"fernando_de_la_mora\", \"departamento\", \"\"]": {
+      "median": 7.20786,
+      "n_clusters": 41
+    },
+    "[\"fernando_de_la_mora\", \"duplex\", \"\"]": {
+      "median": 6.808549,
+      "n_clusters": 33
+    },
+    "[\"luque\", \"casa\", \"\"]": {
+      "median": 6.5844415000000005,
+      "n_clusters": 98
+    },
+    "[\"luque\", \"departamento\", \"\"]": {
+      "median": 7.297322,
+      "n_clusters": 57
+    },
+    "[\"luque\", \"duplex\", \"\"]": {
+      "median": 6.791409,
+      "n_clusters": 111
+    },
+    "[\"san_lorenzo\", \"casa\", \"\"]": {
+      "median": 6.4444254999999995,
+      "n_clusters": 88
+    },
+    "[\"san_lorenzo\", \"departamento\", \"\"]": {
+      "median": 7.061906,
+      "n_clusters": 23
+    },
+    "[\"san_lorenzo\", \"duplex\", \"\"]": {
+      "median": 6.529045,
+      "n_clusters": 33
+    }
+  }
+}

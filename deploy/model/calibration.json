@@ -1,0 +1,7 @@
+{
+  "coverage_nominal": 0.8,
+  "residual_low": -0.5102139999999995,
+  "residual_high": 0.42846980000000023,
+  "method": "empirical_signed_log_residuals",
+  "n_calibration": 354
+}

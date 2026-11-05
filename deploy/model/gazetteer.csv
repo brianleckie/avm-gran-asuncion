@@ -1,0 +1,167 @@
+city,neighborhood,aliases,lat,lon,centroid_method,osm_id,source
+asuncion,Bañado Norte,banado norte,-25.2389317,-57.582692,osm_point,2815305274,OSM node/2815305274
+asuncion,Bañado Santa Ana,banado santa ana,-25.3214502,-57.648567,osm_point,2810411038,OSM node/2810411038
+asuncion,Bañado Tacumbú,banado tacumbu,-25.3096835,-57.6675492,osm_point,1764385384,OSM node/1764385384
+asuncion,Banco San Miguel,banco san miguel,-25.2593246,-57.6137697,osm_point,1764370855,OSM node/1764370855
+asuncion,Barrio Añaretãí,anaretai|barrio anaretai|b° anaretai,-25.30050595,-57.621674183646704,osm_polygon,639464475,OSM way/639464475
+asuncion,Barrio San Francisco,barrio san francisco|b° san francisco|san francisco,-25.2369643,-57.5655181,osm_point,6857718075,OSM node/6857718075
+asuncion,Bella Vista,bella vista,-25.27704795,-57.58990669993027,osm_polygon,3681589,OSM relation/3681589
+asuncion,Bernardino Caballero,bernardino caballero|general bernardino caballero,-25.29865185,-57.608833597059906,osm_polygon,3674005,OSM relation/3674005
+asuncion,Botánico,botanico,-25.242021,-57.5776617,osm_point,2810538957,OSM node/2810538957
+asuncion,Cañada del Ybyray,canada del ybyray,-25.26769195,-57.578822068071304,osm_polygon,3656903,OSM relation/3656903
+asuncion,Ciudad Nueva,ciudad nueva,-25.29622085,-57.6178165354061,osm_polygon,3674023,OSM relation/3674023
+asuncion,De la Residenta,de la residenta,-25.2380032,-57.5448378,osm_point,1970029591,OSM node/1970029591
+asuncion,Distrito Perseverancia,distrito perseverancia,-25.2673162,-57.5961974,osm_point,13429213909,OSM node/13429213909
+asuncion,Doctor Francia,doctor francia,-25.2806218,-57.64890287600382,osm_polygon,3683445,OSM relation/3683445
+asuncion,General Díaz,general diaz|general jose eduvidis diaz,-25.29336705,-57.63939715162798,osm_polygon,3652745,OSM relation/3652745
+asuncion,Gral. Bernardino Caballero,general caballero|gral. bernardino caballero,-25.2989862,-57.6088384,osm_point,1764396845,OSM node/1764396845
+asuncion,Hipódromo,hipodromo,-25.32087775,-57.58579562478537,osm_polygon,3657805,OSM relation/3657805
+asuncion,Itá Enramada,ita enramada,-25.3555943,-57.640818966999774,osm_polygon,3654342,OSM relation/3654342
+asuncion,Itá Pytã Punta,ita pyta punta,-25.284299500000003,-57.664687355316175,osm_polygon,3684207,OSM relation/3684207
+asuncion,Jara,jara,-25.27397745,-57.60436646166219,osm_polygon,3674401,OSM relation/3674401
+asuncion,La Catedral,la catedral,-25.28495945,-57.63365784024263,osm_polygon,3683447,OSM relation/3683447
+asuncion,La Encarnación,la encarnacion,-25.2824551,-57.64037419667335,osm_polygon,3683446,OSM relation/3683446
+asuncion,Las Lomas,las lomas,-25.2759248,-57.57196939550759,osm_polygon,3681770,OSM relation/3681770
+asuncion,Las Mercedes,las mercedes,-25.2818166,-57.61282035511962,osm_polygon,3674856,OSM relation/3674856
+asuncion,Loma Pytá,loma pyta,-25.2500438,-57.543301629269706,osm_polygon,3680842,OSM relation/3680842
+asuncion,Los Laureles,los laureles,-25.3108292,-57.578560641528576,osm_polygon,3658950,OSM relation/3658950
+asuncion,Luis Alberto de Herrera,luis alberto de herrera,-25.29996705,-57.556693057675105,osm_polygon,3678105,OSM relation/3678105
+asuncion,Madame Lynch,madame lynch,-25.27185305,-57.55790205771792,osm_polygon,3697088,OSM relation/3697088
+asuncion,Manorá,mano ra|manora,-25.283272949999997,-57.572139030503806,osm_polygon,3678184,OSM relation/3678184
+asuncion,Mariscal Estigarribia,mariscal estigarribia,-25.3033818,-57.57267325431637,osm_polygon,3677732,OSM relation/3677732
+asuncion,Mariscal López,mariscal lopez,-25.287690050000002,-57.602339420734396,osm_polygon,3674223,OSM relation/3674223
+asuncion,Mbocayaty,mbocayaty,-25.2631376,-57.553101519705365,osm_polygon,3697146,OSM relation/3697146
+asuncion,Mburicaó,mburicao,-25.30028845,-57.59982202157602,osm_polygon,3673828,OSM relation/3673828
+asuncion,Mburucuyá,mburucuya,-25.26653545,-57.56842549941109,osm_polygon,3697183,OSM relation/3697183
+asuncion,Mcal. José Félix Estigarribia,mcal. jose felix estigarribia,-25.3047676,-57.5711265,osm_point,1764402969,OSM node/1764402969
+asuncion,Nazareth,nazareth,-25.319358899999997,-57.59600360847205,osm_polygon,3657622,OSM relation/3657622
+asuncion,Ñu Guazú,nu guazu,-25.26614975,-57.54317500108054,osm_polygon,3680819,OSM relation/3680819
+asuncion,Obrero,obrero,-25.303220349999997,-57.64145170850678,osm_polygon,3652620,OSM relation/3652620
+asuncion,Pettirossi,pettirossi,-25.299573549999998,-57.62692052458958,osm_polygon,3674123,OSM relation/3674123
+asuncion,Pinozá,pinoza,-25.3057818,-57.61364670658804,osm_polygon,3656618,OSM relation/3656618
+asuncion,Recoleta,recoleta,-25.29789615,-57.58594060650897,osm_polygon,3657383,OSM relation/3657383
+asuncion,Republicano,republicano,-25.3205137,-57.634802097503304,osm_polygon,3672659,OSM relation/3672659
+asuncion,Ricardo Brugada,ricardo brugada,-25.28212895,-57.622102296947574,osm_polygon,3683423,OSM relation/3683423
+asuncion,Roberto L. Pettit,roberto l. pettit,-25.3100549,-57.6428433,osm_point,2796453926,OSM node/2796453926
+asuncion,Roberto Luis Pettit,roberto luis pettit,-25.31065795,-57.64483086831817,osm_polygon,3659986,OSM relation/3659986
+asuncion,Sajonia,sajonia,-25.2923636,-57.6619767,osm_point,1764384552,OSM node/1764384552
+asuncion,Salvador del Mundo,salvador del mundo,-25.27361845,-57.549368602741566,osm_polygon,3683987,OSM relation/3683987
+asuncion,San Antonio,san antonio|san antonio de padua,-25.2818447,-57.657161,osm_point,1764384945,OSM node/1764384945
+asuncion,San Blas,san blas,-25.2421564,-57.534204591340654,osm_polygon,3680869,OSM relation/3680869
+asuncion,San Cayetano,san cayetano,-25.3237108,-57.656679,osm_point,1764394157,OSM node/1764394157
+asuncion,San Cristóbal,san cristobal,-25.2958621,-57.56735991192751,osm_polygon,3678139,OSM relation/3678139
+asuncion,San Felipe,san felipe,-25.2640089,-57.6309601,osm_point,1764370853,OSM node/1764370853
+asuncion,San Jorge,san jorge,-25.2844163,-57.55462485936777,osm_polygon,3678416,OSM relation/3678416
+asuncion,San Pablo,san pablo,-25.328865450000002,-57.57835202506052,osm_polygon,3658083,OSM relation/3658083
+asuncion,San Roque,san roque,-25.2898066,-57.62584216210912,osm_polygon,3673351,OSM relation/3673351
+asuncion,San Vicente,san vicente,-25.318116699999997,-57.62408561824397,osm_polygon,3673175,OSM relation/3673175
+asuncion,Santa Ana,santa ana,-25.31538905,-57.65848008589367,osm_polygon,3659208,OSM relation/3659208
+asuncion,Santa María,santa maria,-25.301738,-57.54975107644093,osm_polygon,3677043,OSM relation/3677043
+asuncion,Santa Rosa,santa rosa,-25.25220255,-57.5844015642749,osm_polygon,3682950,OSM relation/3682950
+asuncion,Santísima Trinidad,santisima trinidad,-25.25757745,-57.57712128038168,osm_polygon,3683830,OSM relation/3683830
+asuncion,Santo Domingo,santo domingo,-25.27940215,-57.582863435575064,osm_polygon,3681754,OSM relation/3681754
+asuncion,Tablada Nueva,tablada nueva,-25.2565605,-57.601128818987206,osm_polygon,3682961,OSM relation/3682961
+asuncion,Tacumbú,tacumbu,-25.2997237,-57.65320616051594,osm_polygon,3652950,OSM relation/3652950
+asuncion,Tembetary,tembetary,-25.30746235,-57.5904293910268,osm_polygon,3658489,OSM relation/3658489
+asuncion,Terminal,terminal,-25.32935535,-57.59178632548866,osm_polygon,3679931,OSM relation/3679931
+asuncion,Urbanización Ymaguaré,urbanizacion ymaguare,-25.31281375,-57.63146144981013,osm_polygon,274816737,OSM way/274816737
+asuncion,Villa Aurelia,v. aurelia|villa aurelia,-25.311674500000002,-57.56245326938085,osm_polygon,3677122,OSM relation/3677122
+asuncion,Villa Morra,v. morra|villa morra,-25.2903131,-57.581324715611586,osm_polygon,3678186,OSM relation/3678186
+asuncion,Virgen de Fátima,virgen de fatima,-25.2561802,-57.59132106577492,osm_polygon,3682948,OSM relation/3682948
+asuncion,Virgen de la Asunción,virgen de la asuncion,-25.26414785,-57.58825831886484,osm_polygon,3682907,OSM relation/3682907
+asuncion,Virgen del Huerto,virgen del huerto,-25.27494,-57.59641655260599,osm_polygon,3681574,OSM relation/3681574
+asuncion,Vista Alegre,vista alegre,-25.31549275,-57.60541266162802,osm_polygon,3657549,OSM relation/3657549
+asuncion,Ycuá Satí,ycua sati,-25.28840425,-57.56400788301342,osm_polygon,3678185,OSM relation/3678185
+asuncion,Ytay,ytay,-25.286575499999998,-57.54469141480432,osm_polygon,3678636,OSM relation/3678636
+asuncion,Zeballos Cué,zeballos cue,-25.23314705,-57.56332632972003,osm_polygon,3683019,OSM relation/3683019
+luque,Campo Grande,campo grande,-25.27526725,-57.53071721696367,osm_polygon,11266769,OSM relation/11266769
+luque,Cañada Garay,canada garay,-25.25775695,-57.45444171292256,osm_polygon,11271235,OSM relation/11271235
+luque,Cañada San Rafael,canada san rafael,-25.30391775,-57.465455010870144,osm_polygon,11270862,OSM relation/11270862
+luque,Centro,centro,-25.2682262,-57.4920155,osm_point,1782940561,OSM node/1782940561
+luque,Costa Sosa,costa sosa,-25.29843905,-57.453725839364196,osm_polygon,11270863,OSM relation/11270863
+luque,Cuarto Barrio,cuarto barrio,-25.272380650000002,-57.50640624335275,osm_polygon,11266874,OSM relation/11266874
+luque,Grupo Habitacional,grupo habitacional,-25.251213800000002,-57.49018961236176,osm_polygon,364376569,OSM way/364376569
+luque,Hugua de Seda,hugua de seda,-25.28505265,-57.50435310810937,osm_polygon,11266873,OSM relation/11266873
+luque,Isla Bogado,isla bogado,-25.308454349999998,-57.48809848511644,osm_polygon,11270860,OSM relation/11270860
+luque,Itupamí I,itupami i,-25.2265053,-57.454257247803014,osm_polygon,11271317,OSM relation/11271317
+luque,Itupamí II,itupami ii,-25.20613145,-57.439776956150524,osm_polygon,11271371,OSM relation/11271371
+luque,Laurelty,laurelty,-25.29702525,-57.50783702591524,osm_polygon,11266872,OSM relation/11266872
+luque,Laurelty Sur - San Lorenzo,laurelty sur - san lorenzo,-25.3007099,-57.5138627,osm_point,2839838131,OSM node/2839838131
+luque,Loma Merlo,loma merlo,-25.245866550000002,-57.501346925144134,osm_polygon,11266908,OSM relation/11266908
+luque,Maka'i,maka i|maka'i,-25.2864755,-57.486298901970386,osm_polygon,11270861,OSM relation/11270861
+luque,Maramburé,marambure,-25.271002449999997,-57.46278896625911,osm_polygon,11271234,OSM relation/11271234
+luque,Marin Ka'aguy,marin ka aguy|marin ka'aguy,-25.2422822,-57.44452934598891,osm_polygon,11271316,OSM relation/11271316
+luque,Mora Kue,mora kue,-25.229279,-57.47515179952452,osm_polygon,11269585,OSM relation/11269585
+luque,Nueva Asunción,nueva asuncion,-25.23519235,-57.38304915711277,osm_polygon,11271372,OSM relation/11271372
+luque,Primer Barrio,primer barrio,-25.25820585,-57.502222094022166,osm_polygon,11266907,OSM relation/11266907
+luque,Segundo Barrio,segundo barrio,-25.26198475,-57.48642714286915,osm_polygon,11269587,OSM relation/11269587
+luque,Tarumandy,tarumandy,-25.2294195,-57.43712375868566,osm_polygon,11271369,OSM relation/11271369
+luque,Tarumandy del Río Salado,tarumandy del rio salado,-25.2142252,-57.41327453368609,osm_polygon,11271370,OSM relation/11271370
+luque,Tercer Barrio,tercer barrio,-25.2747564,-57.48434640756855,osm_polygon,11269588,OSM relation/11269588
+luque,Villa Policial,v. policial|villa policial,-25.2826817,-57.5368177,osm_point,2792879871,OSM node/2792879871
+luque,Virgen de los Remedios,virgen de los remedios,-25.3158547,-57.4869526,osm_point,1969983133,OSM node/1969983133
+luque,Yaguareté Corá,yaguarete cora,-25.2796248,-57.465154971709936,osm_polygon,11271232,OSM relation/11271232
+luque,Ycua Caranday,ycua caranday,-25.2273241,-57.4960472,osm_point,1969983188,OSM node/1969983188
+luque,Ycuá Duré,ycua dure,-25.2884029,-57.46877172858868,osm_polygon,11271231,OSM relation/11271231
+luque,Yka'a,yka a|yka'a,-25.2531187,-57.47679702093892,osm_polygon,11269586,OSM relation/11269586
+luque,Ykua Karanda'y,ykua karanda'y,-25.23110445,-57.486264753707665,osm_polygon,11269584,OSM relation/11269584
+luque,Yukyry,yukyry,-25.2676048,-57.431855409110014,osm_polygon,11271233,OSM relation/11271233
+luque,Zárate Isla,zarate isla,-25.2326905,-57.506400267518856,osm_polygon,11266768,OSM relation/11266768
+san_lorenzo,Barcequilllo,barcequilllo,-25.3466205,-57.5357022,osm_point,1969335503,OSM node/1969335503
+san_lorenzo,Caacup Miraflores,caacup miraflores,-25.365366,-57.5224014,osm_point,1969335505,OSM node/1969335505
+san_lorenzo,Capilla del Monte,capilla del monte,-25.3696837,-57.5306882,osm_point,1969854281,OSM node/1969854281
+san_lorenzo,Comunidad San Roque,comunidad san roque,-25.2980786,-57.5309279,osm_point,4950995605,OSM node/4950995605
+san_lorenzo,Corazón de Jesús,corazon de jesus,-25.3464481,-57.5120332,osm_point,2645952443,OSM node/2645952443
+san_lorenzo,Espiritu Santo,espiritu santo,-25.362059,-57.5573293,osm_point,1969335508,OSM node/1969335508
+san_lorenzo,Florida,florida,-25.3526818,-57.5059304,osm_point,1969335510,OSM node/1969335510
+san_lorenzo,La Encarnación,la encarnacion,-25.3609135,-57.5127309,osm_point,1969894423,OSM node/1969894423
+san_lorenzo,Las Mercedes,las mercedes,-25.3348314,-57.4871996,osm_point,1969919997,OSM node/1969919997
+san_lorenzo,Lerida,lerida,-25.3672825,-57.4866697,osm_point,1969908021,OSM node/1969908021
+san_lorenzo,Los Laureles,los laureles,-25.3231182,-57.488374,osm_point,1969920004,OSM node/1969920004
+san_lorenzo,Los Nogales,los nogales,-25.3666492,-57.5070325,osm_point,1969894424,OSM node/1969894424
+san_lorenzo,Lucerito,lucerito,-25.3583392,-57.5064094,osm_point,1969335515,OSM node/1969335515
+san_lorenzo,Mitai,mitai,-25.3772726,-57.5027046,osm_point,1969894425,OSM node/1969894425
+san_lorenzo,Ñu Pora,nu pora,-25.3280407,-57.4798625,osm_point,1969920017,OSM node/1969920017
+san_lorenzo,Nuestra Señora de la Asunción,nuestra senora de la asuncion,-25.3561066,-57.5236607,osm_point,1969335532,OSM node/1969335532
+san_lorenzo,Reducto,reducto,-25.3848137,-57.4890377,osm_point,1969908022,OSM node/1969908022
+san_lorenzo,Sagrada Familia,sagrada familia,-25.3221062,-57.5027442,osm_point,1969335517,OSM node/1969335517
+san_lorenzo,San Antonio,san antonio,-25.3535375,-57.5125283,osm_point,1969335518,OSM node/1969335518
+san_lorenzo,San Felipe,san felipe,-25.3574232,-57.5179053,osm_point,1969335519,OSM node/1969335519
+san_lorenzo,San Francisco,san francisco,-25.3365209,-57.5039661,osm_point,2645951221,OSM node/2645951221
+san_lorenzo,San Isidro,san isidro,-25.3321708,-57.5079699,osm_point,1969335520,OSM node/1969335520
+san_lorenzo,San José,san jose,-25.3355306,-57.4947584,osm_point,1969335521,OSM node/1969335521
+san_lorenzo,San Luis,san luis,-25.3541094,-57.4966676,osm_point,1969335523,OSM node/1969335523
+san_lorenzo,San Miguel,san miguel,-25.3011258,-57.5219951,osm_point,1969320517,OSM node/1969320517
+san_lorenzo,San Pedro,san pedro,-25.3405034,-57.5109691,osm_point,2645951215,OSM node/2645951215
+san_lorenzo,San Rafael,san rafael,-25.3493332,-57.5246609,osm_point,1969335524,OSM node/1969335524
+san_lorenzo,San Ramón,san ramon,-25.3348887,-57.481992,osm_point,1969920007,OSM node/1969920007
+san_lorenzo,Santa Ana,santa ana,-25.3573333,-57.4986411,osm_point,1969335527,OSM node/1969335527
+san_lorenzo,Santa Cruz,santa cruz,-25.3605279,-57.4935956,osm_point,1969335528,OSM node/1969335528
+san_lorenzo,Santa Librada,santa librada,-25.3610253,-57.4871025,osm_point,1969908024,OSM node/1969908024
+san_lorenzo,Santa María,santa maria,-25.3282689,-57.4952265,osm_point,1969920013,OSM node/1969920013
+san_lorenzo,Santissima Trinidad,santissima trinidad,-25.3645635,-57.5104227,osm_point,1969894427,OSM node/1969894427
+san_lorenzo,Santo Rey,santo rey,-25.3155869,-57.4985715,osm_point,1969335530,OSM node/1969335530
+san_lorenzo,Santo Tomás,santo tomas,-25.3617789,-57.528888,osm_point,1969335531,OSM node/1969335531
+san_lorenzo,Tayazuape,tayazuape,-25.3697777,-57.4975833,osm_point,1969894428,OSM node/1969894428
+san_lorenzo,Villa Amelia,v. amelia|villa amelia,-25.3151139,-57.5124613,osm_point,1969320477,OSM node/1969320477
+san_lorenzo,Villa del Agronomo,v. del agronomo|villa del agronomo,-25.3570474,-57.5354968,osm_point,1969335535,OSM node/1969335535
+san_lorenzo,Villa Industrial,v. industrial|villa industrial,-25.3720588,-57.5133801,osm_point,1969894429,OSM node/1969894429
+san_lorenzo,Villa Universitaria,v. universitaria|villa universitaria,-25.3292428,-57.5229283,osm_point,1969320555,OSM node/1969320555
+san_lorenzo,Virgen de Fatima,virgen de fatima,-25.3468556,-57.4867446,osm_point,1969335536,OSM node/1969335536
+san_lorenzo,Virgen del Rosario,virgen del rosario,-25.3848322,-57.5071768,osm_point,1969894430,OSM node/1969894430
+fernando_de_la_mora,Bernardino Caballero,bernardino caballero,-25.330798350000002,-57.56912025415616,osm_polygon,10983539,OSM relation/10983539
+fernando_de_la_mora,Centro,centro,-25.319978550000002,-57.55168738350255,osm_polygon,10983780,OSM relation/10983780
+fernando_de_la_mora,Domingo Savio,domingo savio,-25.327218799999997,-57.53657054470841,osm_polygon,10983782,OSM relation/10983782
+fernando_de_la_mora,Estanzuela,estanzuela,-25.30789305,-57.54746011446527,osm_polygon,10983787,OSM relation/10983787
+fernando_de_la_mora,Itá Ka´aguy,ita ka aguy,-25.342437750000002,-57.55095606659372,osm_polygon,10983542,OSM relation/10983542
+fernando_de_la_mora,Kokue Guasú,kokue guasu,-25.33314795,-57.56271301483385,osm_polygon,10983540,OSM relation/10983540
+fernando_de_la_mora,Laguna Grande,laguna grande,-25.3161463,-57.52929128621798,osm_polygon,10983783,OSM relation/10983783
+fernando_de_la_mora,Laguna Satí,laguna sati,-25.3213611,-57.542422060815085,osm_polygon,10983781,OSM relation/10983781
+fernando_de_la_mora,Las Residentas,las residentas,-25.31403005,-57.550240191163624,osm_polygon,10983786,OSM relation/10983786
+fernando_de_la_mora,Orilla del Campo Grande,orilla del campo grande,-25.2985794,-57.53978712650114,osm_polygon,10983788,OSM relation/10983788
+fernando_de_la_mora,Pitiantuta,pitiantuta,-25.3347312,-57.55497041738916,osm_polygon,10983541,OSM relation/10983541
+fernando_de_la_mora,San António,san antonio,-25.3094515,-57.54049302291,osm_polygon,10983785,OSM relation/10983785
+fernando_de_la_mora,San Juan,san juan,-25.3398349,-57.57783751296898,osm_polygon,10982607,OSM relation/10982607
+fernando_de_la_mora,Tres Bocas,tres bocas,-25.34859125,-57.56592956654853,osm_polygon,10983543,OSM relation/10983543
+fernando_de_la_mora,Villa Ofelia,v. ofelia|villa ofelia,-25.3067882,-57.533472517567844,osm_polygon,10983784,OSM relation/10983784
+fernando_de_la_mora,Zona Sur,zona sur,-25.339745,-57.5470824,osm_point,5545573641,OSM node/5545573641
