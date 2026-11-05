@@ -8,6 +8,9 @@ Variables:
   declare modelo de prueba (`is_test_model`). Sin valor se asume desarrollo: definirla en el deploy.
 - AVM_CORS_ORIGIN: único origen permitido por CORS. Sin valor, no se permite ninguno.
 - AVM_RATE_LIMIT_PER_MIN: pedidos por minuto y por IP en POST /predict.
+- AVM_TRUST_PROXY: "1" (o "true") si la API corre detrás de un proxy de confianza (Railway): el rate
+  limit toma la IP del ÚLTIMO valor de X-Forwarded-For (el que agrega el proxy). Sin valor se usa la
+  IP de la conexión y el header se ignora. No activar si la API es accesible sin pasar por el proxy.
 """
 
 import os
@@ -22,6 +25,9 @@ RATE_LIMIT_WINDOW_SECONDS = 60.0
 # en el deploy (F13).
 PRODUCTION_ENV_VALUES = frozenset({"production", "prod"})
 
+# Valores de AVM_TRUST_PROXY que lo activan; cualquier otro (o vacío) lo deja apagado.
+TRUTHY_VALUES = frozenset({"1", "true"})
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -30,6 +36,7 @@ class Settings:
     env: str = "development"
     cors_origin: str | None = None
     rate_limit_per_min: int = DEFAULT_RATE_LIMIT_PER_MIN
+    trust_proxy: bool = False
 
     @property
     def is_production(self) -> bool:
@@ -58,4 +65,5 @@ class Settings:
             env=get("AVM_ENV") or "development",
             cors_origin=get("AVM_CORS_ORIGIN"),
             rate_limit_per_min=limit,
+            trust_proxy=(get("AVM_TRUST_PROXY") or "").lower() in TRUTHY_VALUES,
         )

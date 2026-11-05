@@ -1,4 +1,5 @@
-"""API FastAPI del AVM (F11): POST /predict, GET /barrios, GET /model-info y GET /health.
+"""API FastAPI del AVM (F11): POST /predict, GET /barrios, GET /model-info, GET /health (readiness)
+y GET /live (liveness).
 
 Depende de `PredictorProtocol` (I4), no de una implementación. Arranque:
 `just serve` (ver el docstring de `avm.api.config` para las variables de entorno).
@@ -15,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from avm.api.config import Settings
 from avm.api.loader import load_predictor
 from avm.api.protocol import PredictorProtocol
-from avm.api.ratelimit import RateLimiter
+from avm.api.ratelimit import RateLimiter, client_ip
 from avm.api.sanitize import public_metadata
 from avm.contract import City, PredictionRequest, PredictionResponse
 
@@ -70,7 +71,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     def rate_limit(request: Request) -> None:
-        ip = request.client.host if request.client else "desconocida"
+        peer = request.client.host if request.client else None
+        ip = client_ip(request.headers.get("x-forwarded-for"), peer, cfg.trust_proxy)
         retry_after = limiter.check(ip)
         if retry_after is not None:
             raise HTTPException(
@@ -102,6 +104,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def model_info(predictor: PredictorDep) -> dict[str, Any]:
         info: dict[str, Any] = public_metadata(predictor.metadata)
         return info
+
+    @app.get("/live")
+    def live() -> dict[str, str]:
+        """Liveness: 200 si el proceso está arriba, haya o no predictor (healthcheck de Railway)."""
+        return {"status": "ok"}
 
     @app.get("/health")
     def health(predictor: PredictorDep) -> dict[str, Any]:

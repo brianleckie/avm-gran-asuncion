@@ -1,10 +1,30 @@
 """Rate limit simple en memoria, por IP (ventana deslizante). Un solo proceso."""
 
+import ipaddress
 import time
 from collections import deque
 from collections.abc import Callable
 
 from avm.api.config import RATE_LIMIT_WINDOW_SECONDS
+
+UNKNOWN_CLIENT = "desconocida"
+
+
+def client_ip(forwarded_for: str | None, peer: str | None, trust_proxy: bool) -> str:
+    """IP contra la que se aplica el rate limit.
+
+    Con `trust_proxy` se toma el ÚLTIMO valor de X-Forwarded-For: es el que agrega el proxy de
+    confianza. Si el proxy reemplaza el header, primero y último coinciden; si lo agrega, el
+    primero lo controla el cliente. Si el valor no es una IP válida o falta el header, se usa la IP
+    de la conexión. Sin `trust_proxy` el header se ignora.
+    """
+    if trust_proxy and forwarded_for:
+        candidate = forwarded_for.split(",")[-1].strip()
+        try:
+            return str(ipaddress.ip_address(candidate))
+        except ValueError:
+            pass
+    return peer or UNKNOWN_CLIENT
 
 
 class RateLimiter:

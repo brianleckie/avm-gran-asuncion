@@ -163,6 +163,22 @@ def test_health_ok_with_fake(client: TestClient) -> None:
     assert r.json()["status"] == "ok"
 
 
+def test_live_ok_with_fake(client: TestClient) -> None:
+    r = client.get("/live")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok"}
+
+
+def test_live_ok_without_predictor_while_health_is_503() -> None:
+    # Liveness != readiness: sin modelo el proceso está vivo (Railway no lo reinicia) pero no listo.
+    with _client(Settings(predictor="model", model_dir="deploy/model", env="production")) as c:
+        assert c.get("/live").status_code == 200
+        assert c.get("/health").status_code == 503
+    with _client(Settings()) as c:
+        assert c.get("/live").status_code == 200
+        assert c.get("/health").status_code == 503
+
+
 def test_health_and_predict_503_without_predictor() -> None:
     with _client(Settings()) as c:
         health = c.get("/health")
@@ -271,6 +287,28 @@ def test_rate_limit_returns_429_with_retry_after() -> None:
         assert int(r.headers["Retry-After"]) >= 1
         # Solo limita /predict.
         assert c.get("/health").status_code == 200
+
+
+def _predict_from(c: TestClient, forwarded_for: str) -> int:
+    return c.post("/predict", json=VALID, headers={"X-Forwarded-For": forwarded_for}).status_code
+
+
+def test_rate_limit_ignores_forwarded_for_without_trust_proxy() -> None:
+    # Sin AVM_TRUST_PROXY el header no cuenta: cambiarlo no esquiva el límite.
+    with _client(Settings(predictor="fake", rate_limit_per_min=1)) as c:
+        assert _predict_from(c, "203.0.113.1") == 200
+        assert _predict_from(c, "203.0.113.2") == 429
+
+
+def test_rate_limit_uses_last_forwarded_for_with_trust_proxy() -> None:
+    settings = Settings(predictor="fake", rate_limit_per_min=1, trust_proxy=True)
+    with _client(settings) as c:
+        assert _predict_from(c, "203.0.113.1") == 200
+        # Otro cliente (último valor distinto) tiene su propio cupo.
+        assert _predict_from(c, "203.0.113.2") == 200
+        # Mismo último valor → mismo cupo, aunque el primero (spoofeable) cambie.
+        assert _predict_from(c, "198.51.100.9, 203.0.113.2") == 429
+        assert _predict_from(c, "198.51.100.77, 203.0.113.1") == 429
 
 
 def test_cors_allows_only_configured_origin() -> None:
