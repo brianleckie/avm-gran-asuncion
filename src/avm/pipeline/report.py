@@ -51,8 +51,10 @@ LIMITATIONS = (
     "Una sola cotización (casa de cambios) para todos los snapshots: los avisos en guaraníes del "
     "snapshot más viejo se convierten con la cotización de la fecha indicada arriba (ADR-004, "
     "sección «Desvío por plazo»). Los avisos en dólares no se ven afectados.",
-    "Una superficie sin tipo (`kind=None`) NO se acepta como construida (decisión por plazo): "
-    "los departamentos son los más afectados.",
+    "Una superficie sin tipo (`kind=None`) NO se acepta como construida en casas y dúplex "
+    "(decisión por plazo). En departamentos se acepta la primera expresión sin tipo cuando no "
+    "hay tag ni superficie `construida` (F4.3): supuesto a priori de que un departamento no tiene "
+    "terreno propio, no verificado a mano; puede incluir superficies que no son la construida.",
     "Sin gazetteer (`--gazetteer none`) ningún aviso tiene barrio: `geo_precision=ciudad` para "
     "todos.",
     "`garages` queda vacío salvo que el snapshot traiga `garages_raw`: el parser no lo extrae.",
@@ -188,6 +190,15 @@ def _features(result: Pipeline) -> list[str]:
         ["m² construidos", "filas", "%"],
         [[s, by_source[s], pct(by_source[s], total)] for s in ("tag", "texto")],
     )
+    untyped = sum(1 for r in rows if r.built_area_untyped)
+    apartments = sum(1 for r in rows if r.listing.property_type is PropertyType.APARTMENT)
+    lines += [
+        "Filas que entran por la regla de departamento con superficie sin tipo "
+        "(`kind=None`, F4.3): "
+        f"{untyped} ({pct(untyped, total)} de las filas; {pct(untyped, apartments)} de los "
+        f"{apartments} departamentos del dataset).",
+        "",
+    ]
     lines += [
         f"Filas cuyo texto trae más de un valor distinto de m² construidos (se toma el primero; "
         f"informativo): {multi}.",

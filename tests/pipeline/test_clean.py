@@ -315,3 +315,71 @@ def test_a_listing_the_contract_rejects_is_discarded_with_field_and_type_only(
     assert isinstance(outcome, Discard) and outcome.rule is Rule.CONTRACT
     assert outcome.detail is not None
     assert "source:missing" in outcome.detail.split(";") and "100" not in outcome.detail
+
+
+# ------------------------------------------------------------- departamento sin tipo (F4.3)
+# Un departamento no tiene terreno propio: sin tag ni superficie `construida`, la primera
+# expresión sin tipo se acepta como construida. Casa y dúplex no cambian.
+
+
+def test_an_apartment_accepts_the_first_untyped_area_as_built() -> None:
+    row = make_row(
+        built_tag=None, property_type="departamentos", description="Departamento de 68 m2"
+    )
+    assert row.listing.built_area_m2 == Decimal(68)
+    assert row.listing.built_area_provenance is Provenance.TEXT
+    assert row.built_area_source == "texto" and row.built_area_untyped is True
+
+
+def test_an_apartment_takes_the_first_untyped_expression_and_not_the_later_ones() -> None:
+    row = make_row(
+        built_tag=None,
+        property_type="departamentos",
+        title="Departamento 68 m2 en el centro",
+        description="Cochera de 12 m2",
+    )
+    assert row.listing.built_area_m2 == Decimal(68)
+
+
+@pytest.mark.parametrize("raw_type", ["casas", "duplex"])
+def test_a_house_or_duplex_with_an_untyped_area_is_still_discarded(raw_type: str) -> None:
+    outcome = discarded(built_tag=None, property_type=raw_type, description="Propiedad de 68 m2")
+    assert outcome is Rule.NO_BUILT_AREA
+
+
+def test_an_apartment_with_a_built_and_an_untyped_area_uses_the_built_one() -> None:
+    row = make_row(
+        built_tag=None,
+        property_type="departamentos",
+        description="Cochera de 12 m2. Superficie de 90 m² construidos",
+    )
+    assert row.listing.built_area_m2 == Decimal(90)
+    assert row.built_area_untyped is False
+
+
+def test_an_apartment_with_a_tag_ignores_the_untyped_area() -> None:
+    row = make_row(
+        built_tag="80", property_type="departamentos", description="Departamento de 68 m2"
+    )
+    assert row.listing.built_area_m2 == Decimal(80)
+    assert row.built_area_source == "tag" and row.built_area_untyped is False
+
+
+def test_an_apartment_with_only_a_land_area_is_still_discarded() -> None:
+    outcome = discarded(
+        built_tag=None, property_type="departamentos", description="Terreno de 360 m2"
+    )
+    assert outcome is Rule.NO_BUILT_AREA
+
+
+def test_an_apartment_without_any_area_is_still_discarded() -> None:
+    assert (
+        discarded(built_tag=None, property_type="departamentos", description="Muy lindo")
+        is Rule.NO_BUILT_AREA
+    )
+
+
+def test_the_regular_rows_are_not_marked_as_untyped() -> None:
+    assert make_row(built_tag="100").built_area_untyped is False
+    typed = make_row(built_tag=None, description="Casa de 120 m² construidos")
+    assert typed.built_area_untyped is False

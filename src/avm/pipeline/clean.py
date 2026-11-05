@@ -7,9 +7,17 @@ y un aviso se cuenta en la primera que falla (embudo secuencial, `DISCARD_ORDER`
 1. operación fuera de alcance (solo "Vendo"), tipo no mapeable, ciudad ausente o fuera de alcance;
 2. precio: sin monto interpretable ("consultar"), monto cero, moneda desconocida (ADR-005: se
    descarta, nunca se adivina), "desde"/rango (`is_from_price`, ADR-006);
-3. m² construidos: precedencia tag > texto con `kind=construida`; `kind=None` NO cuenta. Si el tag
-   y el texto existen y difieren más de 10 % (relativo al tag) se descarta el aviso, no se elige;
+3. m² construidos: precedencia tag > texto con `kind=construida`; `kind=None` NO cuenta, salvo en
+   departamentos (F4.3, abajo). Si el tag y el texto existen y difieren más de 10 % (relativo al
+   tag) se descarta el aviso, no se elige;
 4. el contrato (`Listing`) rechaza el aviso (se cuenta por campo:tipo, nunca con el valor).
+
+Departamento con superficie sin tipo (F4.3): si NO hay m² construidos por tag ni por texto con
+`kind=construida`, se acepta como construida la PRIMERA expresión con `kind=None`
+(`built_area_source=texto`, `Row.built_area_untyped=True`). Justificación a priori: un
+departamento no tiene superficie de terreno propia, así que una superficie sin tipo en su aviso es
+la de la unidad. Casa y dúplex no cambian: ahí un número sin tipo puede ser el terreno. Si el
+departamento tiene una `construida`, gana esa (no se mira la sin tipo).
 
 Precio (ADR-004): USD tal cual; PYG ÷ cotización, con `fx_rate_pyg_per_usd` y `fx_date` en el
 `Listing`. Procedencia: el precio y su moneda vienen del campo de precio del portal
@@ -121,6 +129,7 @@ class Row:
     amenity_origins: Mapping[str, Origin | None]
     neighborhood_reason: Reason
     text_built_values: int  # valores distintos de m² construidos en el texto (informativo)
+    built_area_untyped: bool = False  # departamento aceptado por la regla de kind=None (F4.3)
 
 
 def property_type_of(raw: RawListing) -> PropertyType | None:
@@ -182,6 +191,7 @@ def raw_to_row(
     tag_built = tag_area(raw.built_area_raw or _attribute(raw.attributes_raw, TAG_BUILT))
     tag_land = tag_area(raw.land_area_raw or _attribute(raw.attributes_raw, TAG_LAND))
     built_text: list[Decimal] = []
+    untyped_text: list[Decimal] = []
     land_text: list[Decimal] = []
     for text in (raw.title_raw, raw.description_raw):
         for area in find_areas(text or ""):
@@ -189,6 +199,16 @@ def raw_to_row(
                 built_text.append(area.m2)
             elif area.kind == "terreno":
                 land_text.append(area.m2)
+            else:
+                untyped_text.append(area.m2)
+    untyped_built = (
+        tag_built is None
+        and not built_text
+        and property_type is PropertyType.APARTMENT
+        and bool(untyped_text)
+    )
+    if untyped_built:
+        built_text = untyped_text[:1]  # solo la primera expresión sin tipo
     if tag_built is None and not built_text:
         return Discard(Rule.NO_BUILT_AREA)
     if tag_built is not None and built_text:
@@ -263,7 +283,8 @@ def raw_to_row(
         usd_per_m2=listing.price_usd / built,
         amenity_origins=amenities.origins,
         neighborhood_reason=zone.reason,
-        text_built_values=len(set(built_text)),
+        text_built_values=0 if untyped_built else len(set(built_text)),
+        built_area_untyped=untyped_built,
     )
 
 

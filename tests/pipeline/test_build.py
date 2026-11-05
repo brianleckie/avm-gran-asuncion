@@ -320,6 +320,43 @@ def test_the_pipeline_sources_never_use_the_forbidden_wording() -> None:
         assert "valor de mercado" not in lowered and "precio real" not in lowered, path.name
 
 
+def test_the_report_counts_the_apartments_that_enter_by_the_untyped_area_rule(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "interim"
+    write_snapshot(
+        root,
+        "2026-11-04",
+        [
+            line(  # entra por la regla nueva: departamento, superficie sin tipo
+                make_raw(
+                    "1",
+                    price="US$. 68.000",
+                    property_type="departamentos",
+                    description="Departamento de 68 m2",
+                )
+            ),
+            line(  # departamento con tag: no cuenta
+                make_raw("2", price="US$. 80.000", property_type="departamentos", built_tag="80")
+            ),
+            line(
+                make_raw("3", price="US$. 68.000", description="Casa de 68 m2")
+            ),  # casa: se descarta
+        ],
+    )
+    assert run(root, tmp_path / "out", snapshots=("2026-11-04",)) == 0
+    report = (tmp_path / "out" / "2026-11-04" / "quality_report.md").read_text("utf-8")
+    assert (
+        "Filas que entran por la regla de departamento con superficie sin tipo "
+        "(`kind=None`, F4.3): 1 (50,0 % de las filas; 50,0 % de los 2 departamentos del dataset)."
+    ) in report
+    assert "| sin_m2_construidos | 3 | 1 | 2 |" in report
+    assert [r["listing_key"] for r in read_rows(tmp_path / "out", "2026-11-04")] == [
+        "clasipar:1",
+        "clasipar:2",
+    ]
+
+
 def test_an_empty_result_still_renders_the_report(tmp_path: Path) -> None:
     root = tmp_path / "interim"
     write_snapshot(root, "2026-11-04", [line(make_raw("1", price="Consultar"))])
