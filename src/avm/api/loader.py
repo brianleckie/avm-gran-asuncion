@@ -22,6 +22,15 @@ def _fail(message: str) -> LoadResult:
     return LoadResult(predictor=None, error=message)
 
 
+def _refuse_test_model_in_production(predictor: PredictorProtocol, settings: Settings) -> None:
+    """Un predictor que se declara de prueba no sirve en producción, venga de donde venga."""
+    if settings.is_production and predictor.metadata.get("is_test_model") is True:
+        raise RuntimeError(
+            "El predictor se declara modelo de prueba (is_test_model) y AVM_ENV=production: "
+            "no se sirve."
+        )
+
+
 def load_predictor(settings: Settings) -> LoadResult:
     """Devuelve el predictor o un mensaje claro (sin rutas ni trazas) de por qué no hay.
 
@@ -56,4 +65,5 @@ def load_predictor(settings: Settings) -> LoadResult:
     except Exception:
         log.exception("Falló Predictor.load")
         return _fail("No se pudo cargar el modelo de AVM_MODEL_DIR (el detalle está en los logs).")
+    _refuse_test_model_in_production(predictor, settings)
     return LoadResult(predictor)

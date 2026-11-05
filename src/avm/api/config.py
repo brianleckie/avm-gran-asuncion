@@ -4,7 +4,8 @@ Variables:
 - AVM_PREDICTOR: "model" (Predictor real de I4) o "fake" (solo desarrollo local). Sin valor, la
   API arranca pero /health y /predict devuelven 503.
 - AVM_MODEL_DIR: carpeta models/<version>/ (solo con AVM_PREDICTOR=model).
-- AVM_ENV: "production" prohíbe el predictor "fake".
+- AVM_ENV: "production" (o "prod") prohíbe el predictor "fake" y cualquier predictor que se
+  declare modelo de prueba (`is_test_model`). Sin valor se asume desarrollo: definirla en el deploy.
 - AVM_CORS_ORIGIN: único origen permitido por CORS. Sin valor, no se permite ninguno.
 - AVM_RATE_LIMIT_PER_MIN: pedidos por minuto y por IP en POST /predict.
 """
@@ -17,6 +18,10 @@ from dataclasses import dataclass
 DEFAULT_RATE_LIMIT_PER_MIN = 30
 RATE_LIMIT_WINDOW_SECONDS = 60.0
 
+# Valores de AVM_ENV que cuentan como producción. Sin AVM_ENV se asume desarrollo: hay que definirla
+# en el deploy (F13).
+PRODUCTION_ENV_VALUES = frozenset({"production", "prod"})
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -28,7 +33,7 @@ class Settings:
 
     @property
     def is_production(self) -> bool:
-        return self.env.strip().lower() == "production"
+        return self.env.strip().lower() in PRODUCTION_ENV_VALUES
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":

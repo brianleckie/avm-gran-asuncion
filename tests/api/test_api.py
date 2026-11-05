@@ -284,3 +284,28 @@ def test_cors_allows_only_configured_origin() -> None:
 def test_no_cors_without_origin(client: TestClient) -> None:
     r = client.get("/health", headers={"Origin": "http://localhost:5173"})
     assert "access-control-allow-origin" not in r.headers
+
+
+def test_test_model_from_model_mode_refuses_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Flagged(FakePredictor):
+        @classmethod
+        def load(cls, model_dir: Path) -> "Flagged":
+            return cls()
+
+    class Module:
+        Predictor = Flagged
+
+    monkeypatch.setattr("avm.api.loader.importlib.import_module", lambda name: Module)
+    app = create_app(Settings(predictor="model", model_dir="models/x", env="production"))
+    with pytest.raises(RuntimeError, match="is_test_model"), TestClient(app):
+        pass
+    # En desarrollo sí se sirve.
+    with _client(Settings(predictor="model", model_dir="models/x")) as c:
+        assert c.get("/health").status_code == 200
+
+
+@pytest.mark.parametrize("value", ["prod", "PRODUCTION", " Prod "])
+def test_fake_refuses_production_aliases(value: str) -> None:
+    app = create_app(Settings(predictor="fake", env=value))
+    with pytest.raises(RuntimeError), TestClient(app):
+        pass
