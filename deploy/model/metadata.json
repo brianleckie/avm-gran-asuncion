@@ -1,0 +1,232 @@
+{
+  "model_version": "2026-11-05-baseline-real-v1",
+  "model_kind": "baseline",
+  "contract_version": "0.1.1",
+  "snapshot_date": "2026-11-04",
+  "trained_at": "2026-11-05T22:38:19.625116+00:00",
+  "n_train": 1061,
+  "n_calibration": 354,
+  "n_test": 354,
+  "n_dataset": 1769,
+  "features": [
+    "city",
+    "neighborhood",
+    "property_type",
+    "built_area_m2",
+    "land_area_m2",
+    "bedrooms",
+    "bathrooms",
+    "has_pool",
+    "has_quincho",
+    "is_new",
+    "in_gated_community",
+    "has_elevator",
+    "geo_precision",
+    "dist_cbd_km",
+    "dist_road_km",
+    "dist_mall_km",
+    "dist_school_km",
+    "dist_university_km",
+    "dist_hospital_km",
+    "dist_park_km",
+    "n_road_1km",
+    "n_road_3km",
+    "n_road_5km",
+    "n_mall_1km",
+    "n_mall_3km",
+    "n_mall_5km",
+    "n_school_1km",
+    "n_school_3km",
+    "n_school_5km",
+    "n_university_1km",
+    "n_university_3km",
+    "n_university_5km",
+    "n_hospital_1km",
+    "n_hospital_3km",
+    "n_hospital_5km",
+    "n_park_1km",
+    "n_park_3km",
+    "n_park_5km"
+  ],
+  "baseline_inputs": [
+    "city",
+    "neighborhood",
+    "property_type"
+  ],
+  "coverage_nominal": 0.8,
+  "ignored_features": [
+    "garages",
+    "street_surface"
+  ],
+  "min_clusters": 20,
+  "low_confidence_property_types": [
+    "departamento"
+  ],
+  "train_clusters_by_type": {
+    "casa": 383,
+    "departamento": 271,
+    "duplex": 255
+  },
+  "dataset_rows_by_type": {
+    "casa": 672,
+    "duplex": 587,
+    "departamento": 510
+  },
+  "metrics": {
+    "mdape": 0.23060631312119265,
+    "mape": 0.34073247460959183,
+    "pe10": 0.2231638418079096,
+    "pe20": 0.4548022598870056,
+    "rmse_log": 0.4117768470698819,
+    "interval_coverage": 0.8192090395480226,
+    "mean_interval_width": 0.9345399244140375,
+    "n_test": 354
+  },
+  "metrics_by_segment": {
+    "city": {
+      "asuncion": {
+        "mdape": 0.21311211545885236,
+        "mape": 0.3823897583904679,
+        "pe10": 0.21379310344827587,
+        "pe20": 0.4827586206896552,
+        "rmse_log": 0.4319996070230573,
+        "interval_coverage": 0.7862068965517242,
+        "mean_interval_width": 0.9345399244140374,
+        "n_test": 145
+      },
+      "fernando_de_la_mora": {
+        "mdape": 0.13293997293222257,
+        "mape": 0.22851366500023984,
+        "pe10": 0.32653061224489793,
+        "pe20": 0.5714285714285714,
+        "rmse_log": 0.2933096252411817,
+        "interval_coverage": 0.8571428571428571,
+        "mean_interval_width": 0.9345399244140375,
+        "n_test": 49
+      },
+      "luque": {
+        "mdape": 0.23650703820358548,
+        "mape": 0.33963021468051174,
+        "pe10": 0.2072072072072072,
+        "pe20": 0.43243243243243246,
+        "rmse_log": 0.40711910518302513,
+        "interval_coverage": 0.8648648648648649,
+        "mean_interval_width": 0.9345399244140378,
+        "n_test": 111
+      },
+      "san_lorenzo": {
+        "mdape": 0.3142824700667479,
+        "mape": 0.3321766863393686,
+        "pe10": 0.1836734693877551,
+        "pe20": 0.30612244897959184,
+        "rmse_log": 0.4596043454215845,
+        "interval_coverage": 0.7755102040816326,
+        "mean_interval_width": 0.9345399244140378,
+        "n_test": 49
+      }
+    },
+    "property_type": {
+      "casa": {
+        "mdape": 0.3142824700667479,
+        "mape": 0.41406023559794214,
+        "pe10": 0.168,
+        "pe20": 0.328,
+        "rmse_log": 0.4677755770865193,
+        "interval_coverage": 0.704,
+        "mean_interval_width": 0.9345399244140378,
+        "n_test": 125
+      },
+      "departamento": {
+        "mdape": 0.17288797515275656,
+        "mape": 0.3604990737222215,
+        "pe10": 0.30357142857142855,
+        "pe20": 0.5267857142857143,
+        "rmse_log": 0.4310799403463405,
+        "interval_coverage": 0.8392857142857143,
+        "mean_interval_width": 0.9345399244140377,
+        "n_test": 112
+      },
+      "duplex": {
+        "mdape": 0.19061857831700424,
+        "mape": 0.24346897696721295,
+        "pe10": 0.20512820512820512,
+        "pe20": 0.5213675213675214,
+        "rmse_log": 0.3183773163300045,
+        "interval_coverage": 0.9230769230769231,
+        "mean_interval_width": 0.9345399244140378,
+        "n_test": 117
+      }
+    }
+  },
+  "grouped_kfold": [
+    {
+      "fold": 0,
+      "mdape": 0.23060631312119265,
+      "mape": 0.34073247460959183,
+      "pe10": 0.2231638418079096,
+      "pe20": 0.4548022598870056,
+      "rmse_log": 0.4117768470698819,
+      "interval_coverage": 0.8192090395480226,
+      "mean_interval_width": 0.9345399244140375,
+      "n_test": 354
+    },
+    {
+      "fold": 1,
+      "mdape": 0.22694482684353126,
+      "mape": 0.35151626685277637,
+      "pe10": 0.22598870056497175,
+      "pe20": 0.4689265536723164,
+      "rmse_log": 0.4182197991766777,
+      "interval_coverage": 0.7768361581920904,
+      "mean_interval_width": 0.9222012114360433,
+      "n_test": 354
+    },
+    {
+      "fold": 2,
+      "mdape": 0.2109929319988313,
+      "mape": 0.3321100614423947,
+      "pe10": 0.22033898305084745,
+      "pe20": 0.4774011299435028,
+      "rmse_log": 0.4212378732984035,
+      "interval_coverage": 0.8248587570621468,
+      "mean_interval_width": 1.0967548514222745,
+      "n_test": 354
+    },
+    {
+      "fold": 3,
+      "mdape": 0.20770595439504907,
+      "mape": 0.3412281433558523,
+      "pe10": 0.2937853107344633,
+      "pe20": 0.4858757062146893,
+      "rmse_log": 0.43589598091075954,
+      "interval_coverage": 0.7457627118644068,
+      "mean_interval_width": 0.8746939689743384,
+      "n_test": 354
+    },
+    {
+      "fold": 4,
+      "mdape": 0.19658061287521286,
+      "mape": 0.35914019213161696,
+      "pe10": 0.3031161473087819,
+      "pe20": 0.5070821529745042,
+      "rmse_log": 0.422544119903169,
+      "interval_coverage": 0.7648725212464589,
+      "mean_interval_width": 0.918555668470335,
+      "n_test": 353
+    }
+  ],
+  "seed": 7,
+  "split_method": "grouped_kfold(5), fold 0 test; inner grouped_kfold(4) calibration",
+  "dataset_sha256": "0c1ee8eb3e924929f7c97ec301af9fac8765d721ad3ca802d47ab445a297eb79",
+  "geo_sha256": "f84284d245822689780ee725a37fa2f271448c65ad8aba009df3bd0bc472948b",
+  "gazetteer_sha256": "eb45c120127f87901734319c2f7047533742c3586e90e71b95fa30c85e8eb0c5",
+  "is_test_model": false,
+  "limitations": [
+    "precio de oferta estimado",
+    "Intervalos empíricos sin garantía conformal",
+    "Garages y street_surface excluidos por cobertura",
+    "Métricas por fila; cada cluster tiene un voto en las medianas",
+    "Departamento requiere revisar el supuesto de superficie construida",
+    "Modelo final conserva train/calibración/test separados"
+  ]
+}
