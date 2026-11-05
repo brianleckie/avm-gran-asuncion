@@ -163,9 +163,11 @@
 
 ## F13 — Deploy
 - [ ] F13.1 (B) API en Railway y frontend en Vercel
-- [ ] F13.2 (B) Variables de entorno, CORS y rate limit básico en `/predict`
-  → parcial (F11): `AVM_CORS_ORIGIN` y `AVM_RATE_LIMIT_PER_MIN` ya funcionan; falta el deploy (detrás de Railway la IP real llega en `X-Forwarded-For`, hoy no se usa ese header).
+  → config lista, falta ejecutarlo en los dashboards: `Dockerfile`, `railway.toml` (healthcheck en `/live`), `GET /live` y `docs/deploy.md` con el paso a paso. Se verificó el arranque con `uv sync --frozen --no-dev` + `uvicorn` y el pasaje de 503 a 200 al aparecer `deploy/model/` (Docker no estaba activo, la imagen no se construyó). Web: root `web/`, `npm run build`, `dist`, `VITE_API_URL`. Decisión de cómo llega el modelo: [ADR-008](docs/adr/008-modelo-en-produccion.md) (`deploy/model/` versionado + guardia `scripts/check_deploy_model.py`, pendiente revisión de Oscar).
+- [x] F13.2 (B) Variables de entorno, CORS y rate limit básico en `/predict`
+  → `AVM_CORS_ORIGIN`, `AVM_RATE_LIMIT_PER_MIN` y `AVM_TRUST_PROXY=1` (rate limit por el último valor de `X-Forwarded-For`, solo con esa variable). Pendiente el chequeo manual post-deploy del comportamiento del proxy de Railway (`docs/deploy.md`).
 - [ ] F13.3 (B) Smoke test post-deploy
+  → `scripts/smoke.py` / `just smoke <url> [--origin <web>]` listo y testeado; falta correrlo contra el deploy real.
 
 ## F14 — Calidad transversal
 - [ ] F14.1 (B/O) Pipeline end-to-end reproducible con un solo comando, desde snapshot hasta modelo y métricas

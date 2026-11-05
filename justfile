@@ -66,7 +66,14 @@ evaluate:
     @echo "No implementado, ver ROADMAP F10"
     @exit 1
 
-# API (F11). Variables: AVM_PREDICTOR=fake|model, AVM_MODEL_DIR, AVM_ENV, AVM_CORS_ORIGIN (ver
-# src/avm/api/config.py). Sin AVM_PREDICTOR, /health y /predict responden 503.
+# Variables: AVM_PREDICTOR=fake|model, AVM_MODEL_DIR, AVM_ENV, AVM_CORS_ORIGIN, AVM_RATE_LIMIT_PER_MIN,
+# AVM_TRUST_PROXY (ver src/avm/api/config.py). Sin AVM_PREDICTOR, /health y /predict responden 503.
+# API local (F11)
 serve:
     uv run uvicorn avm.api.app:app --host 127.0.0.1 --port 8000
+
+# Ej.: `just smoke https://xxx.up.railway.app --origin https://<web>`. `--origin` verifica CORS;
+# `--allow-test-model` es para `just serve` con el fake.
+# Smoke test post-deploy de la API (F13.3)
+smoke url *options:
+    uv run python scripts/smoke.py {{url}} {{options}}

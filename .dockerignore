@@ -1,0 +1,21 @@
+# Nada de datos ni de lo que la imagen de la API no usa.
+data/
+models/
+web/
+tests/
+docs/
+scripts/
+.git/
+.github/
+.venv/
+.claude/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+htmlcov/
+**/__pycache__/
+**/node_modules/
+.env
+.env.local

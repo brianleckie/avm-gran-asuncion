@@ -8,7 +8,7 @@ from avm.api import fake as fake_module
 from avm.api.config import DEFAULT_RATE_LIMIT_PER_MIN, Settings
 from avm.api.fake import FakePredictor
 from avm.api.protocol import PredictorProtocol
-from avm.api.ratelimit import RateLimiter
+from avm.api.ratelimit import UNKNOWN_CLIENT, RateLimiter, client_ip
 from avm.contract import City, PredictionRequest
 
 API_DIR = Path(__file__).resolve().parents[2] / "src" / "avm" / "api"
@@ -35,6 +35,39 @@ def test_settings_defaults_and_parsing() -> None:
         5,
     )
     assert s.cors_origin == "https://x.vercel.app"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("1", True), ("true", True), (" TRUE ", True), ("0", False), ("yes", False), ("", False)],
+)
+def test_settings_trust_proxy(raw: str, expected: bool) -> None:
+    assert Settings.from_env({"AVM_TRUST_PROXY": raw}).trust_proxy is expected
+    assert Settings.from_env({}).trust_proxy is False
+
+
+@pytest.mark.parametrize(
+    ("forwarded_for", "peer", "trust", "expected"),
+    [
+        # Sin confianza en el proxy, el header se ignora.
+        ("203.0.113.5", "10.0.0.1", False, "10.0.0.1"),
+        # Con confianza: el ÚLTIMO valor (el que agrega el proxy), con o sin espacios.
+        ("203.0.113.5", "10.0.0.1", True, "203.0.113.5"),
+        ("198.51.100.1, 203.0.113.5", "10.0.0.1", True, "203.0.113.5"),
+        ("198.51.100.1,203.0.113.5 ", "10.0.0.1", True, "203.0.113.5"),
+        ("2001:db8::1", "10.0.0.1", True, "2001:db8::1"),
+        # Valor inválido o header ausente/vacío: IP de la conexión.
+        ("no-es-una-ip", "10.0.0.1", True, "10.0.0.1"),
+        ("203.0.113.5, basura", "10.0.0.1", True, "10.0.0.1"),
+        (None, "10.0.0.1", True, "10.0.0.1"),
+        ("", "10.0.0.1", True, "10.0.0.1"),
+        # Sin conexión conocida.
+        (None, None, True, UNKNOWN_CLIENT),
+        (None, None, False, UNKNOWN_CLIENT),
+    ],
+)
+def test_client_ip(forwarded_for: str | None, peer: str | None, trust: bool, expected: str) -> None:
+    assert client_ip(forwarded_for, peer, trust) == expected
 
 
 @pytest.mark.parametrize("bad", ["abc", "0", "-3"])
