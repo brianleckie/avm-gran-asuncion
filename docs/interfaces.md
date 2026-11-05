@@ -101,14 +101,14 @@ metadata.json      # ver abajo
 `n_train`, `features` (lista ordenada), `coverage_nominal`, y `metrics`.
 
 `metrics` es un objeto con estas claves exactas (las funciones de `avm.model.metrics`), todas
-**fracciones entre 0 y 1, no porcentajes** (0,12 = 12 %), calculadas sobre test:
+**fracciones, no porcentajes** (0,12 = 12 %), calculadas sobre test (`n_test` es un entero):
 
 | Clave | Qué es |
 |---|---|
 | `mdape` | Error porcentual absoluto mediano |
 | `pe10`, `pe20` | Fracción de predicciones dentro de ±10 % y ±20 % |
 | `interval_coverage` | Cobertura empírica del intervalo |
-| `mean_interval_width` | Ancho medio del intervalo |
+| `mean_interval_width` | Ancho medio **relativo** del intervalo (`relative=True`: fracción de la predicción, puede superar 1) |
 | `n_test` | Cantidad de filas de test (entero, no fracción) |
 
 La web (F12) muestra `metrics` con etiquetas en español para estas claves y las claves desconocidas
@@ -145,4 +145,4 @@ de punta a punta, y después se reemplaza por LightGBM + CQR sin cambiar la inte
 
 ## Historial
 - 2026-11-03: versión inicial (I1–I4).
-- 2026-11-05: I4 fija el objeto `metrics` de `metadata.json` (`mdape`, `pe10`, `pe20`, `interval_coverage`, `mean_interval_width`, `n_test`; fracciones 0–1) y el campo opcional `is_test_model`. Propuesto por Brian para la API/web (F11/F12); Oscar tiene que confirmarlo en el PR.
+- 2026-11-05: I4 fija el objeto `metrics` de `metadata.json` (`mdape`, `pe10`, `pe20`, `interval_coverage`, `mean_interval_width`, `n_test`; fracciones, con el ancho relativo a la predicción) y el campo opcional `is_test_model`. Propuesto por Brian para la API/web (F11/F12); Oscar tiene que confirmarlo en el PR.
