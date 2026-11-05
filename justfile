@@ -18,8 +18,8 @@ install:
 # comillas del glob evitan que sh lo expanda en Ubuntu; PowerShell las quita antes de pasarlo. Un
 # solo `*` no cruza directorios: avm.scraping lista aparte su subpaquete `sources`.
 test:
-    uv run pytest --cov=avm.pipeline.parsing --cov=avm.model.metrics --cov=avm.model.splits --cov=avm.contract --cov=avm.scraping --cov-branch --cov-report=
-    uv run coverage report --show-missing --include=src/avm/pipeline/parsing.py --fail-under=95
+    uv run pytest --cov=avm.pipeline --cov=avm.model.metrics --cov=avm.model.splits --cov=avm.contract --cov=avm.scraping --cov-branch --cov-report=
+    uv run coverage report --show-missing --include="src/avm/pipeline/*" --fail-under=95
     uv run coverage report --show-missing --include=src/avm/model/metrics.py --fail-under=95
     uv run coverage report --show-missing --include=src/avm/model/splits.py --fail-under=95
     uv run coverage report --show-missing --include="src/avm/contract/*" --fail-under=95
@@ -41,17 +41,22 @@ check: lint test
 
 # --- Pipeline ---
 
-# Crawler de muestreo (F3.3). Los 4 parámetros son OBLIGATORIOS y no tienen default (presupuesto de
-# requests y seed explícitos en cada corrida). Ej.: `just scrape clasipar 260 19 42`. Es la única receta
-# que sale a la red: solo al host de la fuente, vía BaseScraper (6 s entre requests, robots.txt).
-scrape source budget per_target seed:
-    uv run python -m avm.scraping.run --source {{source}} --budget {{budget}} --per-target {{per_target}} --seed {{seed}}
+# Crawler de muestreo (F3.3). Los 5 parámetros son OBLIGATORIOS y no tienen default (presupuesto de
+# requests, páginas y avisos por búsqueda, y seed explícitos en cada corrida). Ej.: el piloto fue
+# `just scrape clasipar 260 2 19 42`; el crawl grande, `just scrape clasipar 3900 30 400 11`. Es la
+# única receta que sale a la red: solo al host de la fuente, vía BaseScraper (6 s entre requests, robots.txt).
+scrape source budget pages_per_target per_target seed:
+    uv run python -m avm.scraping.run --source {{source}} --budget {{budget}} --pages-per-target {{pages_per_target}} --per-target {{per_target}} --seed {{seed}}
+
+# dataset.csv (I1) y quality_report.md desde la caché de data/interim (F4/F5). Todos los parámetros
+# son OBLIGATORIOS y sin default: cotización (PYG por USD), su fecha (AAAA-MM-DD), su fuente (texto
+# entre comillas dobles, sin comillas dentro), el gazetteer (ruta de I2 o `none`) y una o más fechas
+# de snapshot al final. Sin red. Ej.: `just build-dataset 6085 2026-11-04 "Cambios Chaco S.A.,
+# punto medio compra 5.980 / venta 6.190, 04/11/2026" none 2026-10-06 2026-11-04`
+build-dataset fx_rate fx_date fx_source gazetteer +snapshots:
+    uv run python scripts/build_dataset.py --snapshot {{snapshots}} --fx-pyg-per-usd {{fx_rate}} --fx-date {{fx_date}} --fx-source "{{fx_source}}" --gazetteer {{gazetteer}}
 
 # --- Todavía sin implementación (cada receta apunta a su tarea del ROADMAP) ---
-
-build-dataset:
-    @echo "No implementado, ver ROADMAP F4/F5"
-    @exit 1
 
 train:
     @echo "No implementado, ver ROADMAP F8"
@@ -61,6 +66,14 @@ evaluate:
     @echo "No implementado, ver ROADMAP F10"
     @exit 1
 
+# Variables: AVM_PREDICTOR=fake|model, AVM_MODEL_DIR, AVM_ENV, AVM_CORS_ORIGIN, AVM_RATE_LIMIT_PER_MIN,
+# AVM_TRUST_PROXY (ver src/avm/api/config.py). Sin AVM_PREDICTOR, /health y /predict responden 503.
+# API local (F11)
 serve:
-    @echo "No implementado, ver ROADMAP F11"
-    @exit 1
+    uv run uvicorn avm.api.app:app --host 127.0.0.1 --port 8000
+
+# Ej.: `just smoke https://xxx.up.railway.app --origin https://<web>`. `--origin` verifica CORS;
+# `--allow-test-model` es para `just serve` con el fake.
+# Smoke test post-deploy de la API (F13.3)
+smoke url *options:
+    uv run python scripts/smoke.py {{url}} {{options}}

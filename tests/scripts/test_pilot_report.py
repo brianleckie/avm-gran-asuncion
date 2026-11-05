@@ -381,6 +381,48 @@ def test_sample_section_counts_origins_and_sponsored() -> None:
     assert "| casa | Asunción | 500 | 40 | 7 | 50 | 2 | 1 | 1 | 0 | 1 |" in text
 
 
+def test_a_manifest_of_the_pilot_still_reads_random_page_and_says_one_page() -> None:
+    text = render()  # el manifest del piloto no trae `pages_per_target` ni `random_pages`
+    assert "`--source clasipar --budget 260 --per-target 19 --seed 42`" in text
+    assert "la página 1 más UNA página aleatoria en [2, última]" in text
+    assert "cerca de la mitad del pool" in text
+
+
+def test_a_manifest_with_several_random_pages_per_search_is_reported() -> None:
+    manifest, listings = sample()
+    manifest["pages_per_target"] = 30
+    for target in manifest["targets"]:
+        del target["random_page"]
+        target["random_pages"] = [3, 7, 9]
+    text = report.render(manifest, listings, request_log(), None, None)
+    assert "--budget 260 --pages-per-target 30 --per-target 19" in text
+    assert "la página 1 más hasta 29 páginas aleatorias, sin reposición, en [2, última]" in text
+    assert "| casa | Asunción | 500 | 40 | 3 págs. | 50 | 2 | 1 | 1 | 0 | 1 |" in text
+    assert "cerca de la mitad" not in text  # esa fracción solo se midió con el diseño del piloto
+
+
+def test_one_page_per_search_says_there_is_no_random_page() -> None:
+    manifest, listings = sample()
+    manifest["pages_per_target"] = 1
+    for target in manifest["targets"]:
+        del target["random_page"]
+        target["random_pages"] = []
+    text = report.render(manifest, listings, request_log(), None, None)
+    assert "la página 1 más ninguna página aleatoria en [2, última]" in text
+    assert "hasta 0" not in text
+
+
+def test_two_pages_per_search_in_the_new_manifest_reads_as_the_pilot_design() -> None:
+    manifest, listings = sample()
+    manifest["pages_per_target"] = 2
+    for target in manifest["targets"]:
+        target["random_pages"] = [target.pop("random_page")]
+    text = report.render(manifest, listings, request_log(), None, None)
+    assert "--budget 260 --pages-per-target 2 --per-target 19" in text
+    assert "la página 1 más UNA página aleatoria en [2, última]" in text
+    assert "| casa | Asunción | 500 | 40 | 7 | 50 | 2 | 1 | 1 | 0 | 1 |" in text
+
+
 def test_price_section_classifies_every_listing() -> None:
     text = render()
     # 5 avisos: parseables el 1, 3 y 5 (USD, PYG y USD "desde"); "Consultar" el 2; el 4 no parsea

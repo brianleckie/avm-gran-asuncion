@@ -15,9 +15,8 @@ COLUMNS = (
     "lat",
     "lon",
     "centroid_method",
-    "osm_type",
     "osm_id",
-    "source_url",
+    "source",
 )
 
 # Decisiones revisadas con Oscar; no son reglas generales de desempate.
@@ -120,7 +119,8 @@ def build_rows(city, elements, city_shape):
                 }
             )
             continue
-        groups[normalize(tags["name"])].append((element, lat, lon, method))
+        key = re.sub(r"[^a-z0-9]+", " ", normalize(tags["name"])).strip()
+        groups[key].append((element, lat, lon, method))
     rows = []
     order = {"polygon_representative_point": 0, "osm_node": 1, "missing": 2}
     for name, candidates in sorted(groups.items()):
@@ -178,7 +178,7 @@ def build_rows(city, elements, city_shape):
                     COLUMNS,
                     (
                         city,
-                        name,
+                        element["tags"]["name"].strip(),
                         "|".join(
                             sorted(
                                 {a for c in candidates for a in aliases(c[0]["tags"]).split("|")}
@@ -186,10 +186,13 @@ def build_rows(city, elements, city_shape):
                         ),
                         lat,
                         lon,
-                        method,
-                        element["type"],
+                        {
+                            "polygon_representative_point": "osm_polygon",
+                            "osm_node": "osm_point",
+                            "missing": "missing",
+                        }[method],
                         element["id"],
-                        f"https://www.openstreetmap.org/{element['type']}/{element['id']}",
+                        f"OSM {element['type']}/{element['id']}",
                     ),
                     strict=True,
                 )

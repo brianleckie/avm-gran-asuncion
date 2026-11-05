@@ -14,7 +14,23 @@ uv run pytest           # corre los tests
 uv run pre-commit install   # hooks de git (una vez por clon)
 ```
 
-Con `just`: `just install`, `just test`, `just check` (lint + mypy + tests). `just --list` muestra todas las tareas; `just scrape <fuente> <presupuesto> <por_búsqueda> <seed>` (F3.3, los 4 parámetros son obligatorios) es la única tarea del pipeline implementada; el resto todavía no.
+Con `just`: `just install`, `just test`, `just check` (lint + mypy + tests). `just --list` muestra todas las tareas; `just scrape <fuente> <presupuesto> <páginas_por_búsqueda> <por_búsqueda> <seed>` (F3.3, los 5 parámetros son obligatorios) es la única tarea del pipeline implementada; el resto todavía no.
+
+## API y web (local)
+
+```powershell
+# Terminal 1: API con el predictor de PRUEBA (solo desarrollo; sus valores no significan nada)
+$env:AVM_PREDICTOR = "fake"; $env:AVM_CORS_ORIGIN = "http://localhost:5173"; just serve
+
+# Terminal 2: web
+cd web; npm install; Copy-Item .env.example .env.local; npm run dev
+```
+
+Con el modelo de Oscar (`models/<version>/`): `AVM_PREDICTOR=model` y `AVM_MODEL_DIR=models\<version>`. Variables y comportamiento en `src/avm/api/config.py`.
+
+## Deploy
+
+API en Railway (`Dockerfile`, `railway.toml`) y web en Vercel (`web/`). Sin modelo, la API queda viva (`/live` 200) y no lista (`/health` 503). Paso a paso, variables y smoke test (`just smoke <url>`) en [docs/deploy.md](docs/deploy.md); cómo llega el modelo a producción, en [ADR-008](docs/adr/008-modelo-en-produccion.md).
 
 ## Más información
 

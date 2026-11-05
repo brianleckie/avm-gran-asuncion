@@ -315,7 +315,7 @@ a[data-page]` (página actual), el mayor `a[data-page]` de `ul#pagination` (últ
 | `operation_raw`, `advertiser_type_raw` | **no están en el detalle**: se toman de la tarjeta (`ListingRef`). Los "VENDO / DOY EN ALQUILER" y "Ofrecido por:" que aparecen en el detalle son de 3 avisos relacionados (la casa de Asunción muestra dos alquileres y un terreno) y de una plantilla JS; leerlos daría el dato de otro aviso |
 | `attributes_raw` | los demás `span.ads_tag` ("Habitación en suite", "Piscina", "Quincho"...), la ficha "Departamento:" (el departamento geográfico, "Central") y `patrocinado` = `si` si alguna tarjeta del aviso lo era. **No** "Nro. de Visitas" (volátil) |
 | `currency_raw`, `garages_raw`, `address_raw` | no existen en la fuente como campo propio (§2.5): quedan en `None` |
-| `built_area_raw`, `land_area_raw` | **hoy quedan en `None`**, pero el piloto mostró que los tags `Superficie construida` y `Superficie de terreno m2` existen (§8.4); por ahora van a `attributes_raw`. Pendiente: llevarlos a estos campos |
+| `built_area_raw`, `land_area_raw` | los tags `Superficie construida` → `built_area_raw` y `Superficie de terreno m2` → `land_area_raw` (§8.4, F3.4): comparación de la etiqueta con `casefold`, valor crudo (el número solo, sin unidad) pasado por `_scrub`. Esas dos etiquetas **salen de `attributes_raw`**; cualquier otra etiqueta con "superficie" se queda ahí. Sin el tag, quedan en `None` |
 
 - **Marca de agua**: se descarta por estilo (`span[style*="font-size:0"]`), no por clase, porque la
   clase cambia en cada página.
@@ -328,6 +328,11 @@ a[data-page]` (página actual), el mayor `a[data-page]` de `ul#pagination` (últ
   atributos volátiles (`patrocinado` y "Nro. de Visitas"). Dos requests del mismo aviso sin
   cambios reales dan el mismo hash. La descripción del campo en `raw_listing.py` decía "contenido
   crudo"; se corrigió en el contrato 0.1.1 (PATCH, solo documentación) y ahora dice esta definición.
+  **F3.4 (tags de superficie): el `content_hash` cambia una vez en los avisos que traen el tag**,
+  porque el valor pasa de `attributes_raw` a `built_area_raw`/`land_area_raw` (cambia el contenido
+  canónico). Los snapshots anteriores a F3.4 (2026-10-06 y 2026-11-04) tienen el hash viejo y los tags
+  todavía en `attributes_raw`; `avm.pipeline` los lee de ahí con la misma regla (`build-dataset`), y
+  el hash guardado se conserva tal cual. Los avisos sin el tag mantienen su hash.
 
 **Sanitizado de la caché (D1)** (`sanitize_clasipar_html`): se eliminan `.infoAnunciante__header`
 (nombre, foto o logo y perfil), `.infoAnunciante__datos` (formulario con teléfono y email
@@ -556,7 +561,7 @@ listados y 228 detalles (12 búsquedas × 19, seed 42).
   m2" existen: 54 y 51 de los 227 detalles (23,8 % y 22,5 %), con el número solo. En departamentos
   solo aparece el de superficie construida (14 de 76) y en casas y dúplex se ven los dos. La ficha
   (`.anuncio-detalles`) y el JSON-LD no traen ninguna etiqueta de superficie (0 de 227). El parser los
-  deja en `attributes_raw`. Esto corrige la matriz de §2.5 (que daba la superficie por "nunca
+  deja en `attributes_raw` (F3.4 los lleva a `built_area_raw` y `land_area_raw`). Esto corrige la matriz de §2.5 (que daba la superficie por "nunca
   estructurada" con 3 detalles), §2.8, §3 y §4.
 - **Documentos que todavía dicen "solo texto libre":** el ADR-006 (Contexto y Consecuencias, una
   propuesta pendiente de revisión de Oscar Arce). No se modificó acá: conviene actualizarlo al revisar

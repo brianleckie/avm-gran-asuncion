@@ -39,6 +39,9 @@ URL_3 = (
     f"{PORTAL}/inmuebles/departamentos/"
     "departamento-de-2-dormitorios-68-m2-en-edificio-marlin-san-lorenzo-2214004"
 )
+# detalle_4: estructura real de un detalle de la caché con todo el texto inventado (ver el
+# comentario del caso en CASES).
+URL_4 = f"{PORTAL}/inmuebles/casas/casa-de-prueba-con-piscina-en-luque-9000001"
 
 
 def fixture(name: str) -> str:
@@ -325,6 +328,19 @@ DETAIL_3_DESCRIPTION = "\n".join(
     ]
 )
 
+DETAIL_4_DESCRIPTION = "\n".join(
+    [
+        # p.desc-user: texto inventado, una línea por <br>. Las marcas de agua (span font-size:0)
+        # se descartan; la segunda parte la quinta línea en dos ("...piscina" + " de uso común").
+        "Casa de prueba en Luque, texto inventado para el fixture",
+        "Zona tranquila, cerca de todo",
+        "Cocina equipada y lavadero",
+        "Cochera para 2 autos",
+        "Patio con parrilla y piscina de uso común",
+        "ID: 000 prueba",
+    ]
+)
+
 # (fixture, url, campos esperados). Todo lo no listado es None.
 CASES = {
     "detalle_1": (
@@ -383,6 +399,40 @@ CASES = {
             "published_at_raw": "15/09/2026",
             "attributes_raw": {
                 "Departamento": "Central",
+                "Habitación en suite": "1",
+                "Piscina": "SI",
+                "Quincho": "SI",
+            },
+        },
+    ),
+    # Origen: un detalle de la caché del crawl (2026-11-04) con los dos tags de superficie. Se
+    # conservó la estructura real de la página (head, 14 <meta>, JSON-LD, ficha, tags, descripción,
+    # 3 avisos relacionados) y se inventó TODO el texto: título, descripción, zona, id, precio,
+    # valores de los tags, <meta>, JSON-LD, tooltips y avisos relacionados. Se verificó que no
+    # comparte ninguna secuencia de 6 palabras con la caché, salvo la plantilla del portal. Los
+    # valores de abajo se leyeron a mano del HTML (ficha de 5 filas: sin "Departamento:").
+    "detalle_4": (
+        "detalle_4.html",
+        URL_4,
+        {
+            "source_id": "9000001",  # ficha "Nro. de Anuncio:" (inventado)
+            "title_raw": "Casa de prueba con piscina en Luque",  # h1.tit-anuncio, sin las 3 marcas
+            "description_raw": DETAIL_4_DESCRIPTION,
+            "price_raw": "US$. 285.000,00",  # h3.user-price
+            "built_area_raw": "470",  # span.ads_tag "Superficie construida: <strong>470</strong>"
+            "land_area_raw": "720",  # span.ads_tag "Superficie de terreno m2: <strong>720</strong>"
+            "bedrooms_raw": "5",  # span.ads_tag "Dormitorios: 5"
+            "bathrooms_raw": "5",  # span.ads_tag "Baños: 5"
+            "property_type_raw": "casas",  # /inmuebles/casas/ en la URL
+            "city_raw": "Luque",  # ficha "Ciudad:"
+            "neighborhood_raw": "Zona de Prueba",  # ficha "Zona" (inventada)
+            "latitude_raw": "-25.300000",  # JSON-LD House (inventadas)
+            "longitude_raw": "-57.600000",
+            "published_at_raw": "29/09/2026",  # ficha "Publicado el:"
+            # Tags restantes (el detalle no trae "Departamento:" en la ficha). Los dos de superficie
+            # NO están: van a built_area_raw y land_area_raw.
+            "attributes_raw": {
+                "Amoblado": "SI",
                 "Habitación en suite": "1",
                 "Piscina": "SI",
                 "Quincho": "SI",
@@ -485,7 +535,7 @@ def test_related_listings_do_not_leak_into_the_main_listing() -> None:
 
 
 def test_visits_are_not_extracted() -> None:
-    # Las 3 fichas traen "Nro. de Visitas:" (35, 24 y 94): es volátil y no va a attributes_raw.
+    # Las 4 fichas traen "Nro. de Visitas:" (35, 24, 94 y 5): es volátil y no va a attributes_raw.
     for name, url, _ in CASES.values():
         assert "Nro. de Visitas" not in detail(name, url).attributes_raw
 
@@ -724,6 +774,111 @@ def test_tags_without_a_value_or_label_are_skipped() -> None:
     )
     raw = parse_detail(synthetic(extra_body=tags), SYNTHETIC_URL, NOW)
     assert raw.attributes_raw == {"Piscina": "SI"}
+
+
+# ----------------------------------------------------------------------------- tags de superficie
+# El piloto de F3.3 (docs/pilot/2026-10-06.md §7) encontró dos tags con la superficie: solo esos
+# dos se llevan a built_area_raw y land_area_raw. Cualquier otra etiqueta con "superficie" queda en
+# attributes_raw, a la espera de que alguien decida qué significa.
+
+
+def area_tag(label: str, value: str) -> str:
+    return f'<span class="ads_tag"><a>{label}: <strong>{value}</strong></a></span>'
+
+
+def test_the_two_unambiguous_area_tags_go_to_their_fields_and_leave_attributes_raw() -> None:
+    tags = (
+        area_tag("Superficie construida", "120")
+        + area_tag("Superficie de terreno m2", "360")
+        + area_tag("Piscina", "SI")
+    )
+    raw = parse_detail(synthetic(extra_body=tags), SYNTHETIC_URL, NOW)
+    assert (raw.built_area_raw, raw.land_area_raw) == ("120", "360")
+    assert raw.attributes_raw == {"Piscina": "SI"}  # las dos etiquetas mapeadas no se duplican
+
+
+@pytest.mark.parametrize(
+    ("label", "built", "land"),
+    [("Superficie construida", "120", None), ("Superficie de terreno m2", None, "120")],
+)
+def test_each_area_tag_fills_only_its_own_field(
+    label: str, built: str | None, land: str | None
+) -> None:
+    raw = parse_detail(synthetic(extra_body=area_tag(label, "120")), SYNTHETIC_URL, NOW)
+    assert (raw.built_area_raw, raw.land_area_raw) == (built, land)
+    assert raw.attributes_raw == {}
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Superficie",
+        "Superficie total",
+        "Superficie útil",
+        "Superficie cubierta",
+        "Superficie de terreno",  # sin el "m2" del tag observado
+        "Superficie construida m2",  # variante no observada
+        "Terreno",
+        "Metros cuadrados",
+    ],
+)
+def test_ambiguous_or_unseen_area_labels_are_not_mapped(label: str) -> None:
+    raw = parse_detail(synthetic(extra_body=area_tag(label, "200")), SYNTHETIC_URL, NOW)
+    assert (raw.built_area_raw, raw.land_area_raw) == (None, None)
+    assert raw.attributes_raw == {label: "200"}  # sigue donde estaba, con su valor
+
+
+@pytest.mark.parametrize(
+    ("label", "field"),
+    [
+        ("SUPERFICIE CONSTRUIDA", "built_area_raw"),
+        ("superficie construida", "built_area_raw"),
+        ("Superficie De Terreno M2", "land_area_raw"),
+    ],
+)
+def test_the_area_labels_match_without_regard_to_case(label: str, field: str) -> None:
+    raw = parse_detail(synthetic(extra_body=area_tag(label, "75")), SYNTHETIC_URL, NOW)
+    assert getattr(raw, field) == "75" and raw.attributes_raw == {}
+
+
+@pytest.mark.parametrize("value", ["120", "1.200", "120,5", "120 m2", " 120 "])
+def test_the_area_value_goes_raw_as_a_string(value: str) -> None:
+    raw = parse_detail(
+        synthetic(extra_body=area_tag("Superficie construida", value)), SYNTHETIC_URL, NOW
+    )
+    assert raw.built_area_raw == value.strip()  # solo se normalizan los espacios del borde
+
+
+def test_personal_data_in_an_area_value_is_replaced() -> None:
+    # Sintético: un anunciante que escribe su teléfono (inventado) en el campo de superficie.
+    tags = area_tag("Superficie construida", "0981 123 456")
+    raw = parse_detail(synthetic(extra_body=tags), SYNTHETIC_URL, NOW)
+    assert raw.built_area_raw == "[TELEFONO]" and not find_pii(raw.built_area_raw or "")
+
+
+def test_an_area_tag_without_a_value_is_skipped() -> None:
+    tags = '<span class="ads_tag"><a>Superficie construida: <strong>  </strong></a></span>'
+    raw = parse_detail(synthetic(extra_body=tags), SYNTHETIC_URL, NOW)
+    assert raw.built_area_raw is None and raw.attributes_raw == {}
+
+
+def test_the_area_tags_are_content_so_adding_one_changes_the_hash() -> None:
+    # B3: los avisos con el tag cambian de hash una vez (cambian built_area_raw y attributes_raw).
+    without = parse_detail(synthetic(), SYNTHETIC_URL, NOW)
+    with_tag = parse_detail(
+        synthetic(extra_body=area_tag("Superficie construida", "120")), SYNTHETIC_URL, NOW
+    )
+    other = parse_detail(
+        synthetic(extra_body=area_tag("Superficie construida", "130")), SYNTHETIC_URL, NOW
+    )
+    assert len({without.content_hash, with_tag.content_hash, other.content_hash}) == 3
+
+
+def test_the_old_fixtures_have_no_area_tags_so_their_area_fields_stay_empty() -> None:
+    for name in ("detalle_1", "detalle_2", "detalle_3"):
+        file, url, _ = CASES[name]
+        raw = detail(file, url)
+        assert (raw.built_area_raw, raw.land_area_raw) == (None, None), name
 
 
 def test_a_non_utc_timestamp_is_rejected_by_the_contract() -> None:

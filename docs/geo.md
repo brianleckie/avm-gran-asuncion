@@ -252,3 +252,16 @@ Los conteos afectados pueden quedar por debajo del valor de una consulta más am
 Las variables son iguales para todos los inmuebles asignados a un mismo barrio. La fila
 de ciudad es todavía más gruesa. Esto limita la capacidad de distinguir ubicaciones
 dentro de cada unidad y debe considerarse al evaluar el modelo.
+
+
+## Integración con main del 5 de noviembre de 2026
+
+I2 se ajustó a docs/interfaces.md de main. El CSV vigente conserva el nombre OSM con tildes,
+usa las ocho columnas de I2 y registra el enlace OSM en source. Los métodos vigentes son
+osm_polygon y osm_point. Esta sección sustituye la propuesta de formato inicial.
+F6.1–F6.4 quedan entregadas con las limitaciones de cobertura y selecciones provisionales
+ya documentadas. I3 y su historial preservan las secciones I1, I2 e I4 de Brian.
+
+La integración final con el cargador de Brian unifica variantes de apóstrofos en Luque.
+El artefacto final I2 tiene 166 entradas y I3 tiene 170 filas, incluidas cuatro ciudades.
+source conserva la referencia como OSM tipo/id. Los conteos anteriores son históricos.

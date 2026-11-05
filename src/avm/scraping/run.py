@@ -1,19 +1,29 @@
 """Punto de entrada del crawler de muestreo (F3.3).
 
-    uv run python -m avm.scraping.run --source clasipar --budget 260 --per-target 19 --seed 42
-    just scrape clasipar 260 19 42
+    just scrape clasipar 3900 30 400 11
+    uv run python -m avm.scraping.run --source clasipar --budget 3900 --pages-per-target 30
+        --per-target 400 --seed 11   (equivalente; en la terminal va en una sola línea)
 
-Los cuatro parámetros son OBLIGATORIOS y no tienen default: el presupuesto de requests y el seed
-tienen que ser una decisión explícita en cada corrida. Correr desde la raíz del repo: escribe en
-`data/raw/<fecha>/<fuente>/` (caché sanitizada, `requests.jsonl`, `manifest.json`) y en
-`data/interim/<fecha>/<fuente>/` (`raw_listings.jsonl`, `crawl_manifest.json`). `<fecha>` es la del
-día en que arranca la corrida (la fecha del snapshot, ADR-006 punto 12). Si ya existe el
-`raw_listings.jsonl` de hoy, aborta ANTES de crear el scraper: no pisa ni el archivo ni el
-manifest de la corrida anterior.
+Los cinco parámetros son OBLIGATORIOS y no tienen default: el presupuesto de requests, las páginas
+por búsqueda, los avisos por búsqueda y el seed tienen que ser una decisión explícita en cada
+corrida. Por búsqueda (tipo x ciudad) se pide la página 1 más `--pages-per-target - 1` páginas al
+azar y sin reposición (todas si la búsqueda tiene menos), y de la unión se muestrean hasta
+`--per-target` avisos. El piloto de F3.3 es `--budget 260 --pages-per-target 2 --per-target 19
+--seed 42` (`just scrape clasipar 260 2 19 42`): con 2 páginas el plan es idéntico al de entonces.
+Antes de la primera request imprime el pre-vuelo (requests máximas, duración y hora de fin
+estimadas a 7,4 s por request, y un aviso si superan el presupuesto, que es tope duro).
+
+Correr desde la raíz del repo: escribe en `data/raw/<fecha>/<fuente>/` (caché sanitizada,
+`requests.jsonl`, `manifest.json`) y en `data/interim/<fecha>/<fuente>/` (`raw_listings.jsonl`,
+`crawl_manifest.json`). `<fecha>` es la del día en que arranca la corrida (la fecha del snapshot,
+ADR-006 punto 12). Si ya existe el `raw_listings.jsonl` de hoy, aborta ANTES de crear el scraper:
+no pisa ni el archivo ni el manifest de la corrida anterior.
 
 Código de salida: 0 corrida completa (también si se agotó el presupuesto: queda dicho en el log y
 en el manifest); 2 error de argumentos (argparse); 3 BLOQUEO de la fuente (se cortó todo, sin
-reintentos: no volver a correr sin revisar); 4 otro corte (robots.txt no disponible).
+reintentos: no volver a correr sin revisar); 4 otro corte (robots.txt no disponible, o 20 pedidos
+seguidos sin respuesta de red: `stopped` = "network" en el manifest). En todos los cortes queda lo
+obtenido hasta ahí.
 """
 
 from __future__ import annotations
@@ -75,6 +85,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="tope DURO de requests de la corrida (robots.txt, listados y reintentos incluidos)",
     )
     parser.add_argument(
+        "--pages-per-target",
+        required=True,
+        type=_positive_int,
+        help=(
+            "páginas de listado por búsqueda (tipo x ciudad): la 1 y el resto al azar, sin "
+            "reposición; todas si la búsqueda tiene menos (el piloto fue 2)"
+        ),
+    )
+    parser.add_argument(
         "--per-target",
         required=True,
         type=_positive_int,
@@ -127,6 +146,7 @@ def main(
                 scraper,
                 spec,
                 per_target=args.per_target,
+                pages_per_target=args.pages_per_target,
                 seed=args.seed,
                 out_dir=out_dir,
                 utcnow=utcnow,

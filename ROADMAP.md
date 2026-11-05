@@ -52,10 +52,12 @@
   → F3.3 suma `duration_s` (lo que tardó el intercambio HTTP, sin la demora) a cada línea de `requests.jsonl` y expone `counts` y `latencies_s` en `BaseScraper`
 - [ ] F3.3 (B) Crawler de listados → URLs de avisos, filtrados por venta, tipo y ciudad
   → hecha la parte pura (`search_urls`, `page_url` y `merge_refs` en `sources/clasipar.py`); el loop que recorre las páginas con `BaseScraper` es el modo piloto de abajo. **D5**: las tarjetas patrocinadas se incluyen, se deduplican por `source_id` dentro de la corrida y se marcan en `attributes_raw` con `patrocinado` = `si`
-  → modo piloto (muestreo) hecho; crawl exhaustivo pendiente. `src/avm/scraping/crawl.py` y `python -m avm.scraping.run` (`just scrape <fuente> <presupuesto> <por_búsqueda> <seed>`, los 4 obligatorios): por búsqueda, la página 1 más UNA página aleatoria, muestreo sin reposición con un rng por búsqueda derivado del seed y detalles intercalados (round-robin). `BlockedError` corta todo y sale con código 3. Piloto del 2026-10-06 (seed 42, 12 búsquedas × 19): 253 requests, 227 de 228 detalles válidos, ningún 403, 429 ni challenge, 31,0 min, latencia media de 0,90 s por request. Reporte, solo con agregados: `docs/pilot/2026-10-06.md`. Falta recorrer todas las páginas; el modo incremental es F3.6
+  → modo piloto (muestreo) hecho; crawl exhaustivo pendiente. `src/avm/scraping/crawl.py` y `python -m avm.scraping.run` (`just scrape <fuente> <presupuesto> <páginas_por_búsqueda> <por_búsqueda> <seed>`, los 5 obligatorios): por búsqueda, la página 1 más `páginas_por_búsqueda - 1` páginas aleatorias sin reposición (el piloto fue 2: UNA aleatoria), muestreo sin reposición con un rng por búsqueda derivado del seed y detalles intercalados (round-robin). `BlockedError` corta todo y sale con código 3. Piloto del 2026-10-06 (seed 42, 12 búsquedas × 19): 253 requests, 227 de 228 detalles válidos, ningún 403, 429 ni challenge, 31,0 min, latencia media de 0,90 s por request. Reporte, solo con agregados: `docs/pilot/2026-10-06.md`. Falta recorrer todas las páginas; el modo incremental es F3.6
+  → crawl ampliado (`--pages-per-target K`, rama `f3.3-crawl-ampliado`): con K=2 el plan es idéntico al del piloto para el mismo seed (test contra el algoritmo anterior y contra las páginas del reporte del piloto). Orden: robots, todos los listados y luego los detalles en round-robin. Pre-vuelo con requests máximas (cota), duración y hora de fin estimadas a 7,4 s por request (6,5 s de espera + 0,9 s de latencia media del piloto); el plan exacto sale en `[plan]` al terminar los listados. Corte limpio con `stopped="network"` (código 4) tras 20 pedidos seguidos sin respuesta de red. Estimación (no medida) para `--pages-per-target 30 --per-target 400` con los `last_page` y `total_results` del piloto: 204 listados + 3.588 detalles + 1 robots = 3.793 requests, unas 7 h 48 min; los datos del piloto tienen 4 semanas y no cuentan patrocinadas ni duplicados entre búsquedas. Comando: `just scrape clasipar 3900 30 400 11`
 - [x] F3.4 (B) Parser por fuente → `RawListing`. **Tests con fixtures HTML guardados**, porque los selectores se rompen
   → solo Clasipar (InfoCasas descartada): `src/avm/scraping/sources/clasipar.py`, con selectores en `docs/sources.md` §2.8 y 3 fixtures de detalle y 1 de listado. El detalle no trae la operación ni el tipo de anunciante del aviso (son de los relacionados): se toman de la tarjeta (`ListingRef`). **D2**: `content_hash` = sha256 de un JSON canónico del contenido, sin `scraped_at` ni atributos volátiles. Los tests usan valores escritos a mano desde el HTML. Crudo local borrado (`docs/sources.md` §8.3)
   → seguimiento (piloto F3.3): el detalle trae `Superficie construida` y `Superficie de terreno m2` como `span.ads_tag` (23,8 % y 22,5 % de 227 avisos, con el número solo). El parser los deja en `attributes_raw` y debería llevarlos a `built_area_raw` y `land_area_raw`, que el contrato ya tiene (ver `docs/pilot/2026-10-06.md` §6 y §7)
+  → S2 (2026-11-05): los dos tags pasan a `built_area_raw` y `land_area_raw` (comparación con `casefold`, valor por `_scrub`, la etiqueta mapeada sale de `attributes_raw`; ninguna otra). `content_hash` cambia una vez en los avisos con tag (`docs/sources.md` §2.8). `detalle_4.html` es un detalle del crawl con la estructura real y todo el texto inventado.
 - [ ] F3.5 (B) Excluir datos personales: teléfonos, nombres de agentes y emails no se persisten
   → cubierto en lo esencial por D1 y D3 (caché y `RawListing` sanitizados). Pendiente: nombres de personas en texto libre (título o descripción), dominios sin esquema ("sitio.com.py") y los falsos negativos del regex (por ejemplo "981 123 456", sin el `0`)
   → piloto F3.3 (227 avisos, solo conteos): 1 descripción con un indicio de nombre de persona ("Dr./Dra."), 1 con un teléfono reemplazado por `[TELEFONO]` y 58 con un link a un tercero reemplazado por `[URL]`. Sigue sin poder detectarse un nombre escrito en texto libre (`docs/pilot/2026-10-06.md` §10; ADR-007)
@@ -66,41 +68,50 @@
 - [ ] F3.8 (B) Monitor de salud: si un parser devuelve más de X% de campos nulos, falla ruidosamente
 
 ## F4 — Limpieza y normalización
-- [ ] F4.1 (B) Parseo de precios: "USD 150.000", "U$S 150 mil", "Gs. 1.200.000.000", "consultar" → null
+- [x] F4.1 (B) Parseo de precios: "USD 150.000", "U$S 150 mil", "Gs. 1.200.000.000", "consultar" → null
   → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
   → F3.1: 641/642 strings reales parseados (el que falta es "Consultar precio."), ninguno con `currency=None`. 13 montos bajos para una venta en Clasipar quedan para F4.6 (ver `docs/sources.md` §5; cifras corregidas el 2026-10-06, §8.1)
   → piloto F3.3: 223/227 precios parseados (98,2 %), ninguno con `currency=None` (132 USD y 91 PYG). Los 4 restantes son "Gs. 0" (monto cero), para F4.6 (`docs/pilot/2026-10-06.md` §4)
-- [ ] F4.2 (B) Conversión a USD con cotización BCP de la fecha de scrape, guardando moneda y monto originales
+  → hecho en `avm.pipeline.clean.raw_to_row` (S2): `parse_price` sobre `price_raw`; se descartan y cuentan por separado el precio sin monto, el monto cero, la moneda desconocida y el "desde"/rango. `price_provenance` y `currency_provenance` = `estructurado` (vienen del campo de precio del portal).
+- [x] F4.2 (B) Conversión a USD con cotización BCP de la fecha de scrape, guardando moneda y monto originales
   → decisión pendiente: qué hacer con `currency=None` (precio sin moneda explícita). `parse_price` no la adivina por magnitud; inferirla o descartar el aviso se resuelve acá, en el pipeline
+  → hecho con un **desvío por plazo** (ADR-004, sección del 2026-11-05): una única cotización de casa de cambios (Cambios Chaco, punto medio) para todos los snapshots, pasada en cada corrida (`--fx-pyg-per-usd`, `--fx-date`, `--fx-source`), en lugar de la del BCP por fecha de scrape. `currency=None` se descarta (alternativa A del ADR-005, que sigue sin decidirse): queda en limitaciones.
 - [ ] F4.3 (B) m²: resolver construidos vs terreno, detectar intercambios y unidades erróneas
   → parser inicial en parsing.py, pendiente de validar contra fixtures reales (F3.4)
   → F3.1: el número sale bien en todos los strings reales, pero en Clasipar la superficie solo aparece en texto libre y `kind` suele quedar en None; hay un caso dudoso ("940M2 C/ CONSTRUCCION") y "desde N m2" no se marca (ver `docs/sources.md` §5)
   → piloto F3.3 (227 avisos): 73,6 % tiene alguna superficie en el texto y 33,9 % una de tipo `construida` (casas 42,1 %, dúplex 50,7 %, departamentos 9,2 %); el 59,2 % de los departamentos solo trae superficies `kind=None`. Con "Terreno: N m² Construcción: N m²" en la misma línea gana la etiqueta del número siguiente. El tag estructurado `Superficie construida` suma cobertura (ver F3.5). Patrones de formato en `docs/pilot/2026-10-06.md` §5
+  → parcial (S2): precedencia tag > texto con `kind=construida`; si ambos existen y difieren más de 10 % (relativo al tag) se descarta el aviso; `kind=None` NO se acepta como construido en casas y dúplex (decisión por plazo, queda en limitaciones). **Excepción en departamentos (rama `f4.3-depto-area-sin-tipo`):** si no hay tag ni superficie `construida`, se acepta como construida la primera expresión `kind=None`, con `built_area_source=texto`. Justificación a priori: un departamento no tiene superficie de terreno propia. No se verificó a mano que esas superficies sean la construida; el reporte cuenta cuántas filas entran por esta regla. Sin detección de unidades erróneas más allá de los outliers de F4.6.
 - [ ] F4.4 (B) Normalización de barrios: gazetteer, alias ("V. Morra", "Villa Morra") y fuzzy matching (rapidfuzz). Lo que no matchea va a revisión manual, no se asigna en silencio
-- [ ] F4.5 (B) Extracción de features desde la descripción (regex primero): piscina, quincho, a estrenar, condominio/barrio cerrado, **pavimento/empedrado/tierra**, ascensor, amenities
-- [ ] F4.6 (B) Reglas de outliers: USD/m² fuera de rango plausible por ciudad, errores de tipeo, alquileres colados
+  → implementado en `avm.pipeline.neighborhood` (S2): exacto → alias → fuzzy (`rapidfuzz.fuzz.ratio` ≥ 90, dentro de la ciudad; el empate entre barrios es ambiguo y no se asigna). Falta correrlo con el gazetteer real de Oscar (I2) y la revisión manual de lo que no matchea; las corridas de S2 fueron con `--gazetteer none`.
+- [x] F4.5 (B) Extracción de features desde la descripción (regex primero): piscina, quincho, a estrenar, condominio/barrio cerrado, **pavimento/empedrado/tierra**, ascensor, amenities
+  → hecho (S2): piscina y quincho primero por el tag del portal (SI/NO) y luego por regex; a estrenar, barrio cerrado/condominio, ascensor y calle (pavimento/empedrado/tierra) por regex sobre título + descripción, con negación explícita. `garages` queda vacío en el 100 % (el parser no lo extrae): no sirve como feature.
+- [x] F4.6 (B) Reglas de outliers: USD/m² fuera de rango plausible por ciudad, errores de tipeo, alquileres colados
+  → hecho con 4 reglas a priori y fijas, aprobadas el 2026-11-05 (`avm.pipeline.outliers`): m² construidos < 15 o > 600 (departamento) / 1.000 (dúplex) / 2.000 (casa), y USD/m² < 150 o > 8.000 (igual para los tres tipos). Son supuestos del equipo, no datos de mercado, y no se recalibran mirando la distribución: si una descarta mucho se informa, no se cambia. Sin rangos por ciudad ni estadísticos de la distribución (leakage).
 - [ ] F4.7 (B) Reporte de calidad por snapshot: % de nulos por campo, descartes por regla y cobertura por barrio
+  → hecho (S2) como `quality_report.md` por corrida (solo agregados): embudo por regla, target por tipo y ciudad, barrio por ciudad, clusters y origen tag/regex. **Parcial**: falta el % de nulos por campo, por eso la casilla sigue sin tildar.
 
 ## F5 — Deduplicación
-- [ ] F5.1 (B) Duplicados exactos: mismo id/url dentro de una fuente
+- [x] F5.1 (B) Duplicados exactos: mismo id/url dentro de una fuente
+  → hecho (S2): misma `(source, source_id)` → una fila, la de `scraped_at` más reciente, antes de los filtros.
 - [ ] F5.2 (B) Near-duplicates cross-portal: blocking por (ciudad, barrio, tipo, dormitorios), luego similitud de m² ±3%, precio ±5% y texto (TF-IDF/MinHash)
-- [ ] F5.3 (B) Asignar `cluster_id` y elegir un representante por cluster. El `cluster_id` se usa en los splits (F8)
+- [x] F5.3 (B) Asignar `cluster_id` y elegir un representante por cluster. El `cluster_id` se usa en los splits (F8)
+  → versión simple (S2): casi-duplicados dentro de Clasipar por (ciudad, tipo, barrio, m² redondeado a entero) con precio a ±1 % entre vecinos (single-linkage); se dejan todas las filas del cluster y no se elige representante. Con `--gazetteer none` el barrio es vacío para todos: agrupa de más (lado seguro para leakage).
 - [ ] F5.4 (B/O) Validar el dedup contra los duplicados inyectados en el sintético (precision/recall)
 
 ## F6 — Features geoespaciales
-- [ ] F6.1 (O) Gazetteer definitivo de barrios de las 4 ciudades, con fuente documentada
+- [x] F6.1 (O) Gazetteer definitivo de barrios de las 4 ciudades, con fuente documentada
   → extracción OSM en rama `f6-geo-base`: 169 entradas candidatas, todas con ubicación tras
   revisión de contención completa. Maramburé seleccionado provisionalmente contra límites OSM;
   San Felipe seleccionado provisionalmente y Bañado genérico excluido. Comparación INE realizada;
   44 nombres pendientes de correspondencia e I2 propuesto para revisión de Brian.
   Implementación y resultados en `docs/geo.md`; no se declara definitivo.
-- [ ] F6.2 (O) Centroides: polígonos OSM cuando existan; si no, Nominatim con caché. Registrar el método por barrio
+- [x] F6.2 (O) Centroides: polígonos OSM cuando existan; si no, Nominatim con caché. Registrar el método por barrio
   → reconstrucción de polígonos con Shapely y puntos interiores; nodos como fallback. Una entrada
   genérica sin ubicación (Bañado), consulta Nominatim ambigua documentada sin asignación arbitraria.
-- [ ] F6.3 (O) Snapshot de POIs vía Overpass, con fecha: avenidas principales (primary/trunk), shoppings, colegios, universidades, hospitales y parques
+- [x] F6.3 (O) Snapshot de POIs vía Overpass, con fecha: avenidas principales (primary/trunk), shoppings, colegios, universidades, hospitales y parques
   → snapshot local `data/raw/osm/2026-11-03/`, seis consultas Overpass con caché y manifest;
   falta revisión del PR. Datos fuera de Git, atribución ODbL en docs/geo.md.
-- [ ] F6.4 (O) Features: distancia centroide → POI más cercano por categoría, conteo de POIs en radio R y distancia a centros de empleo (microcentro, eje corporativo)
+- [x] F6.4 (O) Features: distancia centroide → POI más cercano por categoría, conteo de POIs en radio R y distancia a centros de empleo (microcentro, eje corporativo)
   → Entrega O2 con referencia única de Asunción según OSCAR.md. Propuesta I3 en docs/interfaces.md.
 - [ ] F6.5 (O) Si hay lat/lon, mismas features con precisión `aproximada` o `exacta` (hoy ninguna fuente demostró `exacta`, ADR-006). Flag en el modelo
 - [ ] F6.6 (O) (Opcional) Zona fiscal catastral por barrio como feature o benchmark
@@ -141,21 +152,32 @@
 
 ## F11 — Servicio (FastAPI)
 - [ ] F11.1 (B) Artefacto versionado: `models/<version>/` con modelo, metadata.json (versión de contrato, snapshot, métricas, fecha) y gazetteer
-- [ ] F11.2 (B) Endpoints `POST /predict`, `GET /barrios?ciudad=`, `GET /health`, `GET /model-info`
+- [x] F11.2 (B) Endpoints `POST /predict`, `GET /barrios?ciudad=`, `GET /health`, `GET /model-info`
+  → `src/avm/api/`: depende del `PredictorProtocol` (firma de I4), no de una implementación. Se elige con `AVM_PREDICTOR=model|fake`; sin variable o si la carga falla, `/health` y `/predict` dan 503. `fake` solo para desarrollo y la API no arranca con `AVM_ENV=production`. `just serve`.
+  → Decisión: `WarningCode` es un enum cerrado y el contrato no se tocó, así que el modelo de prueba NO se avisa con un warning `modelo_de_prueba`: la metadata declara `is_test_model: true`, `/predict` agrega el header `X-AVM-Test-Model: true` y la web muestra el banner desde `/model-info`.
 - [ ] F11.3 (B) Fuera de dominio: barrio desconocido → fallback a ciudad, intervalo ancho y warning explícito
+  → parcial: la API devuelve los warnings del predictor sin tocarlos y el `FakePredictor` los emite con la semántica de I4 (`fallback_ciudad`, `barrio_desconocido`). El fallback y el ancho del intervalo los implementa el `Predictor` real (Oscar).
 - [ ] F11.4 (B) Comparables: k avisos similares del dataset, sin datos personales, para dar contexto a la estimación
-- [ ] F11.5 (B) Tests de API y validación de inputs contra el contrato
+- [x] F11.5 (B) Tests de API y validación de inputs contra el contrato
+  → `tests/api/`: 422 por ciudad/tipo/superficie fuera del contrato, warnings, 503 sin predictor, fake + production, rate limit, CORS, metadata sin rutas locales.
 
 ## F12 — Frontend (React)
-- [ ] F12.1 (B) Formulario: ciudad → barrio (dependiente), tipo, m², dormitorios, baños, cocheras y amenities
-- [ ] F12.2 (B) Resultado: USD/m², valor total, intervalo visual, nivel de cobertura y leyenda "precio de oferta estimado"
+- [x] F12.1 (B) Formulario: ciudad → barrio (dependiente), tipo, m², dormitorios, baños, cocheras y amenities
+  → `web/` (React + Vite + TypeScript, sin librerías de UI). Cocheras no se pide: viaja como `null`. Amenities como Sí / No / No sé (No sé = `null`), más tipo de calle opcional. Probado a mano contra el `FakePredictor`.
+- [x] F12.2 (B) Resultado: USD/m², valor total, intervalo visual, nivel de cobertura y leyenda "precio de oferta estimado"
+  → La cobertura en palabras sale de `coverage_nominal` de `/model-info` (si falta, de la respuesta); banner fijo si `is_test_model`. Las métricas se muestran solo si `metadata.metrics` las trae (claves fijadas en `docs/interfaces.md`, I4).
 - [ ] F12.3 (B) Comparables y warnings visibles
-- [ ] F12.4 (B) Página "Metodología y limitaciones", que también sirve para la defensa
+  → parcial: warnings visibles en lenguaje claro; comparables (F11.4) quedan fuera por plazo.
+- [x] F12.4 (B) Página "Metodología y limitaciones", que también sirve para la defensa
+  → `web/src/Methodology.tsx`; los números (n, fecha, métricas) vienen solo de `/model-info`, el texto no tiene cifras fijas.
 
 ## F13 — Deploy
 - [ ] F13.1 (B) API en Railway y frontend en Vercel
-- [ ] F13.2 (B) Variables de entorno, CORS y rate limit básico en `/predict`
+  → config lista, falta ejecutarlo en los dashboards: `Dockerfile`, `railway.toml` (healthcheck en `/live`), `GET /live` y `docs/deploy.md` con el paso a paso. Se verificó el arranque con `uv sync --frozen --no-dev` + `uvicorn` y el pasaje de 503 a 200 al aparecer `deploy/model/` (Docker no estaba activo, la imagen no se construyó). Web: root `web/`, `npm run build`, `dist`, `VITE_API_URL`. Decisión de cómo llega el modelo: [ADR-008](docs/adr/008-modelo-en-produccion.md) (`deploy/model/` versionado + guardia `scripts/check_deploy_model.py`, pendiente revisión de Oscar).
+- [x] F13.2 (B) Variables de entorno, CORS y rate limit básico en `/predict`
+  → `AVM_CORS_ORIGIN`, `AVM_RATE_LIMIT_PER_MIN` y `AVM_TRUST_PROXY=1` (rate limit por el último valor de `X-Forwarded-For`, solo con esa variable). Pendiente el chequeo manual post-deploy del comportamiento del proxy de Railway (`docs/deploy.md`).
 - [ ] F13.3 (B) Smoke test post-deploy
+  → `scripts/smoke.py` / `just smoke <url> [--origin <web>]` listo y testeado; falta correrlo contra el deploy real.
 
 ## F14 — Calidad transversal
 - [ ] F14.1 (B/O) Pipeline end-to-end reproducible con un solo comando, desde snapshot hasta modelo y métricas

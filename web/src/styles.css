@@ -1,0 +1,399 @@
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1b2430;
+  --muted: #5a6677;
+  --border: #d5dae1;
+  --accent: #1f5fbf;
+  --accent-contrast: #ffffff;
+  --warn-bg: #fff4d6;
+  --warn-text: #5c4300;
+  --test-bg: #b3261e;
+  --test-text: #ffffff;
+  --error: #b3261e;
+  --range: #cfe0fa;
+  --marker: #1f5fbf;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c;
+    --surface: #1b212a;
+    --text: #e8ecf1;
+    --muted: #a3adbb;
+    --border: #323b48;
+    --accent: #6ea4f4;
+    --accent-contrast: #0c1118;
+    --warn-bg: #3a2f10;
+    --warn-text: #f5dc9a;
+    --error: #ff8a80;
+    --range: #26384f;
+    --marker: #6ea4f4;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.wrap {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  margin: 1.25rem 0 0.5rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+  margin: 1.75rem 0 0.5rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+.lead {
+  color: var(--muted);
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0.35rem 0 0;
+}
+
+.error-text {
+  color: var(--error);
+}
+
+/* --- cabecera, banner, pie --- */
+.banner {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.banner-test {
+  background: var(--test-bg);
+  color: var(--test-text);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.banner-test.inline {
+  position: static;
+  border-radius: 8px;
+}
+
+.site-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font-size: 0.9rem;
+}
+
+nav a[aria-current="page"] {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.site-footer {
+  margin-top: 2.5rem;
+  padding: 1rem 0 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+main {
+  padding-bottom: 1rem;
+}
+
+/* --- tarjetas y formulario --- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 1rem;
+}
+
+label,
+legend {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+input[type="text"],
+select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+.segmented input:focus-visible + span {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.more {
+  margin: 0.5rem 0 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.more summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 1rem;
+  margin-top: 0.75rem;
+}
+
+.tri {
+  border: 0;
+  padding: 0;
+  margin: 0 0 0.9rem;
+}
+
+.segmented {
+  display: flex;
+  margin-top: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segmented label {
+  flex: 1;
+  margin: 0;
+  font-weight: 500;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+}
+
+.segmented span {
+  display: block;
+  padding: 0.6rem 0.25rem;
+  text-align: center;
+  cursor: pointer;
+  min-height: 2.75rem;
+}
+
+.segmented input:checked + span {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+
+button.primary {
+  width: 100%;
+  min-height: 3rem;
+  font: inherit;
+  font-weight: 700;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button.primary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* --- resultado --- */
+.legend {
+  display: inline-block;
+  margin: 0 0 0.75rem;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.figure-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.figure {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.range {
+  margin: 1.25rem 0 0.25rem;
+}
+
+.range-track {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--range);
+}
+
+.range-marker {
+  position: absolute;
+  top: -5px;
+  width: 4px;
+  height: 24px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--marker);
+}
+
+.range-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.range-note {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.warnings {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-radius: 8px;
+}
+
+.warnings h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.warnings ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+/* --- metodología --- */
+.prose ul {
+  padding-left: 1.2rem;
+}
+
+.prose li {
+  margin-bottom: 0.4rem;
+}
+
+.facts {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.facts div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+@media (min-width: 40rem) {
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  h1 {
+    font-size: 1.85rem;
+  }
+
+  .figure {
+    font-size: 1.75rem;
+  }
+}

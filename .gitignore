@@ -47,3 +47,6 @@ desktop.ini
 .vscode/
 *.swp
 *~
+
+# Frontend (variables locales de Vite)
+.env.local

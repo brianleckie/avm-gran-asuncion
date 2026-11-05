@@ -7,11 +7,14 @@ requires-python = ">=3.12"
 authors = [{ name = "Brian Leckie" }, { name = "Oscar Arce" }]
 # httpx (cliente HTTP) y selectolax (parser HTML) son runtime desde F3.2/F3.4: los usa avm.scraping.
 dependencies = [
+    "fastapi>=0.162.0",
     "httpx>=0.28.1",
     "numpy>=2",
     "pydantic>=2",
+    "rapidfuzz>=3.14.6",
     "selectolax>=1.0.0",
     "shapely>=2.2.0",
+    "uvicorn>=0.54.0",
 ]
 
 [dependency-groups]
