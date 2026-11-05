@@ -62,3 +62,11 @@ def test_detector_catches_synthetic_pii(text: str) -> None:
 )
 def test_detector_ignores_prices_and_placeholders(text: str) -> None:
     assert not find_pii(text)
+
+
+MAX_FIXTURE_BYTES = 450_000  # el hook check-added-large-files de pre-commit corta en 500 KB
+
+
+@pytest.mark.parametrize("path", FIXTURES, ids=lambda p: p.relative_to(FIXTURES_DIR).as_posix())
+def test_fixture_stays_under_the_size_limit(path: Path) -> None:
+    assert path.stat().st_size <= MAX_FIXTURE_BYTES, f"{path.name} pesa demasiado"
