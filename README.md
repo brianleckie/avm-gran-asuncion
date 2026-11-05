@@ -16,6 +16,18 @@ uv run pre-commit install   # hooks de git (una vez por clon)
 
 Con `just`: `just install`, `just test`, `just check` (lint + mypy + tests). `just --list` muestra todas las tareas; `just scrape <fuente> <presupuesto> <páginas_por_búsqueda> <por_búsqueda> <seed>` (F3.3, los 5 parámetros son obligatorios) es la única tarea del pipeline implementada; el resto todavía no.
 
+## API y web (local)
+
+```powershell
+# Terminal 1: API con el predictor de PRUEBA (solo desarrollo; sus valores no significan nada)
+$env:AVM_PREDICTOR = "fake"; $env:AVM_CORS_ORIGIN = "http://localhost:5173"; just serve
+
+# Terminal 2: web
+cd web; npm install; Copy-Item .env.example .env.local; npm run dev
+```
+
+Con el modelo de Oscar (`models/<version>/`): `AVM_PREDICTOR=model` y `AVM_MODEL_DIR=models\<version>`. Variables y comportamiento en `src/avm/api/config.py`.
+
 ## Más información
 
 - [ROADMAP.md](ROADMAP.md): tareas por fase, con responsable.
