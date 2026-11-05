@@ -59,6 +59,12 @@ LIMITATIONS = (
     "Las coordenadas no se usan (geo a nivel barrio, ADR-003).",
     "Los tags de superficie de los snapshots anteriores a F3.4 se leen de `attributes_raw`; su "
     "`content_hash` es el del parser viejo.",
+    "`snapshot_date` es la del snapshot de la observación más reciente de cada aviso: para un "
+    "holdout temporal el train solo tendría avisos cuya última aparición fue antes del corte "
+    "(sesgo de supervivencia). Conviene cortar con otra fecha o agregar la primera aparición.",
+    "Una republicación con otro `source_id` y un precio que cambió más de 1 % no se agrupa en el "
+    "mismo cluster: puede quedar a los dos lados de un split. `cluster_id` solo es comparable "
+    "dentro de un mismo `dataset.csv`.",
     "Los rangos de outliers son supuestos a priori del equipo, no datos de mercado, y no se "
     "recalibraron mirando la distribución.",
     "Con `--gazetteer none` los clusters se arman sin barrio: pueden agrupar de más (lado seguro "

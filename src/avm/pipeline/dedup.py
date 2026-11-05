@@ -4,12 +4,15 @@
    varios snapshots o repetida, se conserva la de `scraped_at` más reciente (a igual `scraped_at`,
    la del snapshot posterior). Se hace ANTES de los filtros para que el embudo cuente avisos únicos.
    Como queda una sola fila por aviso, el mismo aviso nunca cae a los dos lados de un split.
-2. **Casi-duplicados** (`assign_clusters`), solo dentro de una fuente: bloque = (ciudad, tipo,
+2. **Casi-duplicados** (`assign_clusters`): bloque = (ciudad, tipo,
    barrio canónico, m² construidos redondeados a entero con .5 hacia arriba). Dentro del bloque, se
    ordena por precio USD y dos avisos consecutivos se unen si el más caro no supera en más de 1 % al
    más barato. Las componentes conexas son un `cluster_id` (single-linkage: por transitividad un
    cluster puede abarcar más de 1 % de extremo a extremo). El resto, cluster propio. Se dejan TODAS
    las filas del cluster (I1): el modelo decide y los splits agrupan por `cluster_id`.
+
+Hoy hay una sola fuente (Clasipar) y el bloque no incluye la fuente: con un segundo portal habría
+que revisar la tolerancia (±1 % y m² exacto son estrictos entre portales).
 
 Límites de la regla pedida, a propósito del lado seguro para leakage cuando fallan por exceso:
 - sin gazetteer el barrio es vacío para todos: el bloque queda (ciudad, tipo, m²) y puede unir
