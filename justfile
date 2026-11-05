@@ -18,8 +18,8 @@ install:
 # comillas del glob evitan que sh lo expanda en Ubuntu; PowerShell las quita antes de pasarlo. Un
 # solo `*` no cruza directorios: avm.scraping lista aparte su subpaquete `sources`.
 test:
-    uv run pytest --cov=avm.pipeline.parsing --cov=avm.model.metrics --cov=avm.model.splits --cov=avm.contract --cov=avm.scraping --cov-branch --cov-report=
-    uv run coverage report --show-missing --include=src/avm/pipeline/parsing.py --fail-under=95
+    uv run pytest --cov=avm.pipeline --cov=avm.model.metrics --cov=avm.model.splits --cov=avm.contract --cov=avm.scraping --cov-branch --cov-report=
+    uv run coverage report --show-missing --include="src/avm/pipeline/*" --fail-under=95
     uv run coverage report --show-missing --include=src/avm/model/metrics.py --fail-under=95
     uv run coverage report --show-missing --include=src/avm/model/splits.py --fail-under=95
     uv run coverage report --show-missing --include="src/avm/contract/*" --fail-under=95
@@ -48,11 +48,15 @@ check: lint test
 scrape source budget pages_per_target per_target seed:
     uv run python -m avm.scraping.run --source {{source}} --budget {{budget}} --pages-per-target {{pages_per_target}} --per-target {{per_target}} --seed {{seed}}
 
-# --- Todavía sin implementación (cada receta apunta a su tarea del ROADMAP) ---
+# dataset.csv (I1) y quality_report.md desde la caché de data/interim (F4/F5). Todos los parámetros
+# son OBLIGATORIOS y sin default: cotización (PYG por USD), su fecha (AAAA-MM-DD), su fuente (texto
+# entre comillas dobles, sin comillas dentro), el gazetteer (ruta de I2 o `none`) y una o más fechas
+# de snapshot al final. Sin red. Ej.: `just build-dataset 6085 2026-11-04 "Cambios Chaco S.A.,
+# punto medio compra 5.980 / venta 6.190, 04/11/2026" none 2026-10-06 2026-11-04`
+build-dataset fx_rate fx_date fx_source gazetteer +snapshots:
+    uv run python scripts/build_dataset.py --snapshot {{snapshots}} --fx-pyg-per-usd {{fx_rate}} --fx-date {{fx_date}} --fx-source "{{fx_source}}" --gazetteer {{gazetteer}}
 
-build-dataset:
-    @echo "No implementado, ver ROADMAP F4/F5"
-    @exit 1
+# --- Todavía sin implementación (cada receta apunta a su tarea del ROADMAP) ---
 
 train:
     @echo "No implementado, ver ROADMAP F8"
