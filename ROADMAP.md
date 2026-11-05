@@ -142,10 +142,14 @@
 
 ## F11 — Servicio (FastAPI)
 - [ ] F11.1 (B) Artefacto versionado: `models/<version>/` con modelo, metadata.json (versión de contrato, snapshot, métricas, fecha) y gazetteer
-- [ ] F11.2 (B) Endpoints `POST /predict`, `GET /barrios?ciudad=`, `GET /health`, `GET /model-info`
+- [x] F11.2 (B) Endpoints `POST /predict`, `GET /barrios?ciudad=`, `GET /health`, `GET /model-info`
+  → `src/avm/api/`: depende del `PredictorProtocol` (firma de I4), no de una implementación. Se elige con `AVM_PREDICTOR=model|fake`; sin variable o si la carga falla, `/health` y `/predict` dan 503. `fake` solo para desarrollo y la API no arranca con `AVM_ENV=production`. `just serve`.
+  → Decisión: `WarningCode` es un enum cerrado y el contrato no se tocó, así que el modelo de prueba NO se avisa con un warning `modelo_de_prueba`: la metadata declara `is_test_model: true`, `/predict` agrega el header `X-AVM-Test-Model: true` y la web muestra el banner desde `/model-info`.
 - [ ] F11.3 (B) Fuera de dominio: barrio desconocido → fallback a ciudad, intervalo ancho y warning explícito
+  → parcial: la API devuelve los warnings del predictor sin tocarlos y el `FakePredictor` los emite con la semántica de I4 (`fallback_ciudad`, `barrio_desconocido`). El fallback y el ancho del intervalo los implementa el `Predictor` real (Oscar).
 - [ ] F11.4 (B) Comparables: k avisos similares del dataset, sin datos personales, para dar contexto a la estimación
-- [ ] F11.5 (B) Tests de API y validación de inputs contra el contrato
+- [x] F11.5 (B) Tests de API y validación de inputs contra el contrato
+  → `tests/api/`: 422 por ciudad/tipo/superficie fuera del contrato, warnings, 503 sin predictor, fake + production, rate limit, CORS, metadata sin rutas locales.
 
 ## F12 — Frontend (React)
 - [ ] F12.1 (B) Formulario: ciudad → barrio (dependiente), tipo, m², dormitorios, baños, cocheras y amenities
@@ -156,6 +160,7 @@
 ## F13 — Deploy
 - [ ] F13.1 (B) API en Railway y frontend en Vercel
 - [ ] F13.2 (B) Variables de entorno, CORS y rate limit básico en `/predict`
+  → parcial (F11): `AVM_CORS_ORIGIN` y `AVM_RATE_LIMIT_PER_MIN` ya funcionan; falta el deploy (detrás de Railway la IP real llega en `X-Forwarded-For`, hoy no se usa ese header).
 - [ ] F13.3 (B) Smoke test post-deploy
 
 ## F14 — Calidad transversal

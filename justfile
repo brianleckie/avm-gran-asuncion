@@ -66,6 +66,7 @@ evaluate:
     @echo "No implementado, ver ROADMAP F10"
     @exit 1
 
+# API (F11). Variables: AVM_PREDICTOR=fake|model, AVM_MODEL_DIR, AVM_ENV, AVM_CORS_ORIGIN (ver
+# src/avm/api/config.py). Sin AVM_PREDICTOR, /health y /predict responden 503.
 serve:
-    @echo "No implementado, ver ROADMAP F11"
-    @exit 1
+    uv run uvicorn avm.api.app:app --host 127.0.0.1 --port 8000
