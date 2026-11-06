@@ -1,6 +1,11 @@
 # API del AVM en Railway (F13). Uso: ver docs/deploy.md.
 FROM python:3.12-slim
 
+# Runtime OpenMP usado por la rueda Linux de LightGBM.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Misma versión de uv que el desarrollo (uv --version).
 COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /usr/local/bin/uv
 

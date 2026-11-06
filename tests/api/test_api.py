@@ -169,9 +169,11 @@ def test_live_ok_with_fake(client: TestClient) -> None:
     assert r.json() == {"status": "ok"}
 
 
-def test_live_ok_without_predictor_while_health_is_503() -> None:
+def test_live_ok_without_predictor_while_health_is_503(tmp_path: Path) -> None:
     # Liveness != readiness: sin modelo el proceso está vivo (Railway no lo reinicia) pero no listo.
-    with _client(Settings(predictor="model", model_dir="deploy/model", env="production")) as c:
+    with _client(
+        Settings(predictor="model", model_dir=str(tmp_path / "missing-model"), env="production")
+    ) as c:
         assert c.get("/live").status_code == 200
         assert c.get("/health").status_code == 503
     with _client(Settings()) as c:

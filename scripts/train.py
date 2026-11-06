@@ -12,19 +12,39 @@ def main(argv=None):
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--geo", type=Path, required=True)
     parser.add_argument("--gazetteer", type=Path, required=True)
-    parser.add_argument("--model", choices=["baseline"], required=True)
+    parser.add_argument("--model", choices=["baseline", "lightgbm-cqr"], required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--min-clusters", type=int, default=20)
+    parser.add_argument("--without-geo", action="store_true")
+    parser.add_argument("--dataset-version", default="unspecified")
+    parser.add_argument("--stage", choices=["development", "final"], default="development")
     args = parser.parse_args(argv)
-    metadata = train_baseline(
-        args.dataset,
-        args.geo,
-        args.gazetteer,
-        args.out,
-        seed=args.seed,
-        min_clusters=args.min_clusters,
-    )
+    if args.model == "baseline":
+        if args.without_geo:
+            parser.error("--without-geo solo se aplica a lightgbm-cqr")
+        metadata = train_baseline(
+            args.dataset,
+            args.geo,
+            args.gazetteer,
+            args.out,
+            seed=args.seed,
+            min_clusters=args.min_clusters,
+        )
+    else:
+        from avm.model.experiment import train_lightgbm
+
+        metadata = train_lightgbm(
+            args.dataset,
+            args.geo,
+            args.gazetteer,
+            args.out,
+            seed=args.seed,
+            min_clusters=args.min_clusters,
+            with_geo=not args.without_geo,
+            dataset_version=args.dataset_version,
+            stage=args.stage,
+        )
     print(
         json.dumps(
             {"model_version": metadata["model_version"], "metrics": metadata["metrics"]},
