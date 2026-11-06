@@ -273,6 +273,241 @@ main {
   padding-bottom: var(--s-4);
 }
 
+/* --- página Estimar y formulario --- */
+.estimate > * {
+  grid-column: 1 / -1;
+}
+
+.intro {
+  padding-block: var(--s-6) var(--s-5);
+}
+
+.intro .lead {
+  margin: var(--s-4) 0 0;
+}
+
+.form {
+  border-top: 2px solid var(--ink);
+  padding-top: var(--s-5);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  margin-bottom: var(--s-5);
+}
+
+label,
+legend {
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+}
+
+input[type="text"],
+select {
+  width: 100%;
+  min-height: 3rem;
+  padding: var(--s-2) 0;
+  font: inherit;
+  font-size: 1.125rem;
+  color: var(--ink);
+  background-color: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  border-radius: 0;
+  transition: box-shadow var(--ease);
+}
+
+input[type="text"]:focus,
+select:focus {
+  box-shadow: 0 1px 0 0 var(--ink);
+}
+
+select {
+  appearance: none;
+  padding-right: var(--s-6);
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink) 50%),
+    linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+  background-position:
+    calc(100% - 0.6rem) 55%,
+    calc(100% - 0.25rem) 55%;
+  background-size: 0.35rem 0.35rem;
+  background-repeat: no-repeat;
+}
+
+select:disabled {
+  color: var(--ink-2);
+  border-bottom-style: dotted;
+  cursor: not-allowed;
+}
+
+.more {
+  margin: var(--s-2) 0 var(--s-5);
+  border-block: 1px solid var(--ink);
+}
+
+.more summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 3.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.more summary::-webkit-details-marker {
+  display: none;
+}
+
+.more summary::after {
+  content: "+";
+  font-size: 1.75rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.more[open] summary::after {
+  content: "2";
+}
+
+.more[open] > summary {
+  margin-bottom: var(--s-1);
+}
+
+.more > .hint {
+  margin-bottom: var(--s-4);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 var(--s-5);
+}
+
+.tri {
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--s-5);
+  min-width: 0;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: var(--s-2);
+  border: 1px solid var(--ink);
+}
+
+.segmented label {
+  position: relative;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.segmented label + label {
+  border-left: 1px solid var(--ink);
+}
+
+.segmented input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+.segmented span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch);
+  cursor: pointer;
+  transition:
+    background-color var(--ease),
+    color var(--ease);
+}
+
+.segmented input:not(:checked) + span:hover {
+  background: var(--rule);
+}
+
+.segmented input:checked + span {
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.segmented input:focus-visible + span {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button.primary {
+  display: block;
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0 var(--s-4);
+  font: inherit;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-align: left;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background-color var(--ease);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+button.primary:focus-visible {
+  outline-color: var(--ink);
+  outline-offset: 3px;
+}
+
+button.primary:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+@media (min-width: 40rem) {
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 64rem) {
+  .intro {
+    grid-column: 1 / 10;
+    padding-block: var(--s-7) var(--s-6);
+  }
+
+  .form {
+    grid-column: 1 / 6;
+    grid-row: 2;
+  }
+
+  .result-slot {
+    grid-column: 7 / -1;
+    grid-row: 2;
+  }
+
+  button.primary {
+    display: inline-block;
+    width: auto;
+    min-width: 16rem;
+  }
+}
+
 /* --- movimiento --- */
 @media (prefers-reduced-motion: reduce) {
   *,

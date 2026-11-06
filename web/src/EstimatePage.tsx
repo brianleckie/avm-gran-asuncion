@@ -82,7 +82,9 @@ export function EstimatePage({ info }: { info: InfoState }) {
   }, [form.city]);
 
   useEffect(() => {
-    if (result) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!result) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    resultRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
   }, [result]);
 
   const onSubmit = async (event: React.FormEvent) => {
@@ -105,8 +107,8 @@ export function EstimatePage({ info }: { info: InfoState }) {
   };
 
   return (
-    <>
-      <section>
+    <div className="grid estimate">
+      <section className="intro">
         <h1>Estimá el precio de oferta de un inmueble</h1>
         <p className="lead">
           Casas, departamentos y dúplex en venta en Asunción, Luque, San Lorenzo y Fernando de la
@@ -115,7 +117,7 @@ export function EstimatePage({ info }: { info: InfoState }) {
         </p>
       </section>
 
-      <form onSubmit={onSubmit} noValidate className="card form">
+      <form onSubmit={onSubmit} noValidate className="form">
         <div className="field">
           <label htmlFor="city">Ciudad</label>
           <select
@@ -258,9 +260,9 @@ export function EstimatePage({ info }: { info: InfoState }) {
         </button>
       </form>
 
-      <div ref={resultRef}>
+      <div ref={resultRef} className="result-slot">
         {result && <ResultCard result={result} info={info} />}
       </div>
-    </>
+    </div>
   );
 }
