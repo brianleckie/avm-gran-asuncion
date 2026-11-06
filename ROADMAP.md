@@ -172,6 +172,8 @@
   → parcial: warnings visibles en lenguaje claro; comparables (F11.4) quedan fuera por plazo.
 - [x] F12.4 (B) Página "Metodología y limitaciones", que también sirve para la defensa
   → `web/src/Methodology.tsx`; los números (n, fecha, métricas) vienen solo de `/model-info`, el texto no tiene cifras fijas.
+- [x] F12.5 (B) Rediseño visual: estilo suizo, mobile first, un solo acento
+  → Solo `web/` (CSS + clases/markup; `lib.ts`, `api.ts` y la API no cambian). Tokens y escala tipográfica en `web/src/styles.css`, grilla de 4 columnas en celular y 12 desde 48 rem, modo oscuro automático. Verificado en 360/390/768/1280 px contra el modelo real, sin scroll horizontal.
 
 ## F13 — Deploy
 - [ ] F13.1 (B) API en Railway y frontend en Vercel
