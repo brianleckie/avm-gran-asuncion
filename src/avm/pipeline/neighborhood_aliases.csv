@@ -1,0 +1,24 @@
+city,alias,neighborhood,note
+asuncion,Herrera,Luis Alberto de Herrera,Forma abreviada del mismo nombre
+asuncion,Ykua Sati,Ycuá Satí,Variante de escritura Ykua/Ycua
+asuncion,Catedral,La Catedral,Omite el artículo del nombre canónico
+asuncion,Villa Aurelia Asunción,Villa Aurelia,Nombre del barrio seguido de la ciudad
+asuncion,"Barrio Herrera, Asunción",Luis Alberto de Herrera,Nombre abreviado y ciudad
+asuncion,Mburucuya Asunción,Mburucuyá,Barrio y ciudad sin tildes
+asuncion,Ycua sati Asunción,Ycuá Satí,Barrio y ciudad sin tildes
+asuncion,Las mercedes Asunción,Las Mercedes,Barrio y ciudad
+asuncion,Mcal. Estigarribia,Mariscal Estigarribia,Abreviatura de Mariscal
+luque,Mora cue,Mora Kue,Variante ortográfica cue/kue
+luque,"Loma Merlo, Luque",Loma Merlo,Barrio y ciudad
+luque,Loma Merlo - Luque,Loma Merlo,Barrio y ciudad
+luque,"Isla Bogado, Luque",Isla Bogado,Barrio y ciudad
+luque,"Primer Barrio, Luque",Primer Barrio,Barrio y ciudad
+luque,Cuarto Barrio Luque,Cuarto Barrio,Barrio y ciudad
+san_lorenzo,BARRIO BARCEQUILLO - SAN LORENZO,Barcequilllo,Variante de escritura frente al nombre OSM
+san_lorenzo,"Barrio San Miguel, San Lorenzo",San Miguel,Barrio y ciudad
+san_lorenzo,San Lorenzo - Barrio Lucerito,Lucerito,Barrio y ciudad
+fernando_de_la_mora,"Barrio Kokue Guasu, Fernando de la Mora (Zona Sur)",Kokue Guasú,Barrio explícito con ciudad y sector como contexto
+asuncion,Barrio Jara - Univ Americana,Jara,Barrio explícito seguido de una referencia universitaria
+asuncion,herrera asuncion,Luis Alberto de Herrera,Nombre abreviado con ciudad
+san_lorenzo,SAN MIGUEL BARRIO SAN LORENZO,San Miguel,Barrio explícito y ciudad
+luque,Luque cuarto barrio,Cuarto Barrio,Barrio explícito precedido por ciudad

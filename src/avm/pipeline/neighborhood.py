@@ -30,8 +30,9 @@ from avm.contract import City, NeighborhoodMatch
 
 FUZZY_THRESHOLD: Final = 90.0  # puntaje mínimo de `fuzz.ratio` (0 a 100) para un match fuzzy
 
-_BARRIO_TOKEN: Final = re.compile(r"(?<![^\W_])b[°º]\.?|(?<![^\W_])barrio(?![^\W_])")
+_BARRIO_TOKEN: Final = re.compile(r"(?<![^\W_])b[°º]\.?|\b(?:barrio|zona)\b")
 _NOT_ALNUM: Final = re.compile(r"[^0-9a-z]+")
+MANUAL_ALIASES: Final = Path(__file__).with_name("neighborhood_aliases.csv")
 
 
 class Reason(StrEnum):
@@ -52,18 +53,33 @@ class NeighborhoodResult:
     reason: Reason
 
 
-def normalize_name(text: str) -> str:
-    """Minúscula, sin tildes, sin "barrio"/"b°", solo letras y dígitos separados por un espacio."""
+def normalize_name(text: str, *, city: City | None = None) -> str:
+    """Normaliza escritura y, con contexto, retira la ciudad de la zona."""
     lowered = _BARRIO_TOKEN.sub(" ", text.casefold())
+    for pattern, replacement in (
+        (r"\bv\.(?=\s|$)", "villa"),
+        (r"\bsta\b\.?", "santa"),
+        (r"\bgral\b\.?", "general"),
+    ):
+        lowered = re.sub(pattern, replacement, lowered)
     decomposed = unicodedata.normalize("NFKD", lowered)
     plain = "".join(char for char in decomposed if not unicodedata.combining(char))
-    return _NOT_ALNUM.sub(" ", plain).strip()
+    plain = _NOT_ALNUM.sub(" ", plain).strip()
+    if city is not None:
+        city_name = normalize_name(city.value.replace("_", " "))
+        pattern = rf"\b{re.escape(city_name)}\b"
+        if re.search(pattern, plain):
+            plain = re.sub(pattern, " ", plain)
+            plain = re.sub(r"\b(?:central|paraguay)\b", " ", plain)
+    return " ".join(plain.split())
 
 
 @dataclass(frozen=True, slots=True)
 class _CityIndex:
     canonical: dict[str, str] = field(default_factory=dict)  # normalizado -> canónico
     aliases: dict[str, str] = field(default_factory=dict)  # normalizado -> canónico
+    manual: dict[str, str] = field(default_factory=dict)
+    ambiguous: set[str] = field(default_factory=set)
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,7 +93,9 @@ class Gazetteer:
         return not self.cities
 
 
-def load_gazetteer(path: Path | None) -> Gazetteer:
+def load_gazetteer(
+    path: Path | None, *, manual_aliases_path: Path | None = MANUAL_ALIASES
+) -> Gazetteer:
     """Lee `gazetteer.csv` (I2). None = sin gazetteer. Falla ante un alias ambiguo."""
     if path is None:
         return Gazetteer()
@@ -89,14 +107,35 @@ def load_gazetteer(path: Path | None) -> Gazetteer:
             if not canonical:
                 continue
             index = cities[city]
-            index.canonical[normalize_name(canonical)] = canonical
+            canonical_key = normalize_name(canonical)
+            if index.canonical.get(canonical_key, canonical) != canonical:
+                index.ambiguous.add(canonical_key)
+            index.canonical[canonical_key] = canonical
             for alias in (row.get("aliases") or "").split("|"):
                 key = normalize_name(alias)
                 if not key:
                     continue
                 if index.aliases.get(key, canonical) != canonical:
-                    raise ValueError(f"alias ambiguo en {city.value}: apunta a dos barrios")
+                    if (
+                        key in index.canonical
+                        or normalize_name(index.aliases[key]) == canonical_key
+                    ):
+                        index.ambiguous.add(key)
+                    else:
+                        raise ValueError(f"alias ambiguo en {city.value}: apunta a dos barrios")
                 index.aliases[key] = canonical
+    if manual_aliases_path is not None:
+        with manual_aliases_path.open(encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle):
+                city = City(row["city"])
+                index = cities.get(city)
+                canonical = row["neighborhood"]
+                if index is None or canonical not in index.canonical.values():
+                    continue  # El mismo cargador admite gazetteers sintéticos o parciales.
+                key = normalize_name(row["alias"])
+                if index.manual.get(key, canonical) != canonical:
+                    raise ValueError(f"alias manual ambiguo en {city.value}")
+                index.manual[key] = canonical
     return Gazetteer(dict(cities))
 
 
@@ -117,17 +156,28 @@ def match_neighborhood(
         return NeighborhoodResult(None, unmatched, Reason.NO_ZONE)
     if key in _city_names(city, city_raw):
         return NeighborhoodResult(None, unmatched, Reason.SAME_AS_CITY)
+    contextual_key = normalize_name(zone or "", city=city)
+    if not contextual_key:
+        return NeighborhoodResult(None, unmatched, Reason.SAME_AS_CITY)
     index = gazetteer.cities.get(city)
     if gazetteer.is_empty:
         return NeighborhoodResult(None, unmatched, Reason.NO_GAZETTEER)
     if index is None:
         return NeighborhoodResult(None, unmatched, Reason.NO_MATCH)
+    if city == City.FERNANDO_DE_LA_MORA and contextual_key in {"norte", "sur"}:
+        return NeighborhoodResult(None, unmatched, Reason.AMBIGUOUS)
+    if key in index.manual:
+        return NeighborhoodResult(index.manual[key], NeighborhoodMatch.MANUAL, Reason.MATCHED)
+    key = contextual_key
+    if key in index.ambiguous:
+        return NeighborhoodResult(None, unmatched, Reason.AMBIGUOUS)
     if key in index.canonical:
         return NeighborhoodResult(index.canonical[key], NeighborhoodMatch.EXACT, Reason.MATCHED)
     if key in index.aliases:
         return NeighborhoodResult(index.aliases[key], NeighborhoodMatch.ALIAS, Reason.MATCHED)
 
     choices = {**index.aliases, **index.canonical}  # el canónico gana si coincide con un alias
+    choices = {key: value for key, value in choices.items() if key not in index.ambiguous}
     best: dict[str, float] = {}
     for name, score, _ in process.extract(
         key, list(choices), scorer=fuzz.ratio, score_cutoff=FUZZY_THRESHOLD, limit=None

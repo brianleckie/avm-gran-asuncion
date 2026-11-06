@@ -36,6 +36,7 @@ MATCH_METHODS = (
     NeighborhoodMatch.EXACT,
     NeighborhoodMatch.ALIAS,
     NeighborhoodMatch.FUZZY,
+    NeighborhoodMatch.MANUAL,
     NeighborhoodMatch.UNMATCHED,
 )
 UNMATCHED_REASONS = (
@@ -145,7 +146,7 @@ def _neighborhood(result: Pipeline) -> list[str]:
             continue
         methods = Counter(r.listing.neighborhood_match for r in group)
         reasons = Counter(r.neighborhood_reason for r in group)
-        matched = sum(methods[m] for m in MATCH_METHODS[:3])
+        matched = sum(methods[m] for m in MATCH_METHODS if m != NeighborhoodMatch.UNMATCHED)
         rows.append(
             [
                 city,

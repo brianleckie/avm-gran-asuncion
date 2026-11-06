@@ -226,7 +226,7 @@ def test_without_a_gazetteer_the_barrio_is_unmatched_and_the_precision_is_city()
 
 def test_a_matched_barrio_gives_barrio_precision(tmp_path: object) -> None:
     gazetteer = Gazetteer(
-        {City.LUQUE: clean_index({"zona de prueba": "Zona de Prueba"})}  # type: ignore[arg-type]
+        {City.LUQUE: clean_index({"de prueba": "Zona de Prueba"})}  # type: ignore[arg-type]
     )
     row = make_row(gazetteer=gazetteer)
     assert row.listing.neighborhood_norm == "Zona de Prueba"
