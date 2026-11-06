@@ -372,7 +372,7 @@ select:disabled {
 }
 
 .more[open] summary::after {
-  content: "2";
+  content: "−";
 }
 
 .more[open] > summary {
@@ -515,6 +515,10 @@ button.primary:disabled {
   padding-top: var(--s-5);
   border-top: 2px solid var(--ink);
   animation: reveal 160ms ease-out;
+}
+
+.result-slot {
+  scroll-margin-top: 5rem; /* deja libre el banner sticky de modelo de prueba */
 }
 
 @keyframes reveal {
