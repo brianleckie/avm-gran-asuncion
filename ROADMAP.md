@@ -132,14 +132,15 @@
 - [x] F8.3 (O) **Baseline:** mediana de log USD/m² por barrio, con respaldo tipo+ciudad, ciudad y global. Predictor I4 entregado con calibración y test agrupados.
 - [ ] F8.4 (O) Modelo hedónico OLS, interpretable y defendible ante el tribunal
 - [ ] F8.5 (O) Random Forest
-- [ ] F8.6 (O) LightGBM con target encoding de barrio **dentro del fold**
+- [x] F8.6 (O) LightGBM con categóricas nativas y vocabularios ajustados solo en train (docs/lightgbm-cqr.md).
 - [ ] F8.7 (O) Tuning acotado (Optuna) con presupuesto fijo, evaluado solo en validación
 - [ ] F8.8 (O) Interpretabilidad: SHAP global y local, más dependencia parcial de m² y de las distancias
 
 ## F9 — Incertidumbre (el "rango de error" del entregable)
-- [ ] F9.1 (O) LightGBM cuantílico (α = 0.1, 0.5, 0.9)
-- [ ] F9.2 (O) Conformal (CQR) sobre un set de calibración separado, para garantizar cobertura empírica
+- [x] F9.1 (O) LightGBM cuantílico (α = 0.1, 0.5, 0.9)
+- [x] F9.2 (O) Conformal (CQR) por tipo sobre clusters de calibración separados. Cobertura nominal 80 %, bajo intercambiabilidad por tipo.
 - [ ] F9.3 (O) Reportar cobertura real vs nominal y ancho medio, global y por segmento
+  → Pipeline y validación v2 listos, comparación por tipo antes/después de CQR. Reporte final pendiente de v3.
 - [ ] F9.4 (O) Verificar que los intervalos son más anchos en barrios con poca data. Si no lo son, algo está mal
 
 ## F10 — Evaluación y ablation
@@ -147,6 +148,7 @@
   → `metrics.py` devuelve fracciones (0,12 = 12 %); PE10 y PE20 son `pe_within` con `tol=0.10` y `tol=0.20`. Incluye también cobertura y ancho de intervalos, insumos de F9.3
 - [ ] F10.2 (B/O) Tabla comparativa: baseline vs OLS vs RF vs LightGBM, en los tres esquemas de split
 - [ ] F10.3 (B/O) **Ablation geo:** con y sin features espaciales. Responde directamente la pregunta de investigación
+  → Evaluación pareada de cinco folds implementada y probada con sintético/v2. Resultados finales con v3.
 - [ ] F10.4 (B/O) Error por segmento: ciudad, tipo y rango de precio
 - [ ] F10.5 (B/O) Análisis de residuos: dónde y por qué falla el modelo
 

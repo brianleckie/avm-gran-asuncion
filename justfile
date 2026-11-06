@@ -56,14 +56,13 @@ scrape source budget pages_per_target per_target seed:
 build-dataset fx_rate fx_date fx_source gazetteer +snapshots:
     uv run python scripts/build_dataset.py --snapshot {{snapshots}} --fx-pyg-per-usd {{fx_rate}} --fx-date {{fx_date}} --fx-source "{{fx_source}}" --gazetteer {{gazetteer}}
 
-# --- Todavía sin implementación (cada receta apunta a su tarea del ROADMAP) ---
+# --- Modelado y evaluación ---
 
-train dataset geo gazetteer model out:
-    uv run python scripts/train.py --dataset "{{dataset}}" --geo "{{geo}}" --gazetteer "{{gazetteer}}" --model {{model}} --out "{{out}}"
+train dataset geo gazetteer model out *options:
+    uv run python scripts/train.py --dataset "{{dataset}}" --geo "{{geo}}" --gazetteer "{{gazetteer}}" --model {{model}} --out "{{out}}" {{options}}
 
-evaluate:
-    @echo "No implementado, ver ROADMAP F10"
-    @exit 1
+evaluate dataset geo out version *options:
+    uv run python scripts/evaluate.py --dataset "{{dataset}}" --geo "{{geo}}" --out "{{out}}" --dataset-version "{{version}}" {{options}}
 
 # Variables: AVM_PREDICTOR=fake|model, AVM_MODEL_DIR, AVM_ENV, AVM_CORS_ORIGIN, AVM_RATE_LIMIT_PER_MIN,
 # AVM_TRUST_PROXY (ver src/avm/api/config.py). Sin AVM_PREDICTOR, /health y /predict responden 503.

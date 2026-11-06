@@ -165,6 +165,7 @@ de punta a punta, y después se reemplaza por LightGBM + CQR sin cambiar la inte
 ---
 
 ## Historial
+- 2026-11-06: I3 confirma la categoría `road` y radios 1/3/5 km acordados en la entrega geo. I4 incorpora LightGBM/CQR con calibración separada por tipo y score máximo por cluster, parámetros en `calibration.json` y boosters en `model.bin` (JSON comprimido). Los artefactos de desarrollo v2 se declaran `is_test_model=true`; resultados y artefacto finales quedan para v3. Se preserva la carga de los baselines publicados.
 - 2026-11-03: versión inicial (I1–I4).
 - 2026-11-05: I4 fija el objeto `metrics` de `metadata.json` (`mdape`, `pe10`, `pe20`, `interval_coverage`, `mean_interval_width`, `n_test`; fracciones, con el ancho relativo a la predicción) y el campo opcional `is_test_model`. Propuesto por Brian para la API/web (F11/F12); Oscar tiene que confirmarlo en el PR.
 

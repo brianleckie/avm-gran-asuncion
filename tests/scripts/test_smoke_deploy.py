@@ -23,8 +23,10 @@ def _client(settings: Settings) -> Iterator[TestClient]:
 
 
 @pytest.fixture
-def no_model() -> Iterator[TestClient]:
-    yield from _client(Settings(predictor="model", model_dir="deploy/model", env="production"))
+def no_model(tmp_path: Path) -> Iterator[TestClient]:
+    yield from _client(
+        Settings(predictor="model", model_dir=str(tmp_path / "missing-model"), env="production")
+    )
 
 
 @pytest.fixture
