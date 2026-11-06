@@ -58,7 +58,7 @@ function ModelFacts({ info }: { info: InfoState }) {
 
 export function Methodology({ info }: { info: InfoState }) {
   return (
-    <article className="prose">
+    <article className="prose grid">
       <h1>Metodología y limitaciones</h1>
       <p className="lead">
         Esta herramienta estima el <strong>precio de oferta</strong> por m² y el valor total de
