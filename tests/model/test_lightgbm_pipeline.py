@@ -106,3 +106,22 @@ def test_quantile_roundtrip_and_no_test_target_leakage(synthetic_lgbm, tmp_path)
     ).read_text()
     loaded = QuantileModel.load(new_model / "model.bin")
     assert loaded.predict(frame.iloc[:8]) == pytest.approx(point)
+
+
+def test_selection_cv_excludes_final_holdout(synthetic_lgbm, monkeypatch):
+    from avm.model import experiment
+
+    data, _ = synthetic_lgbm
+    _, _, original_groups = load_data(data / "dataset.csv", data / "geo_features.csv")
+    holdout_groups = set(original_groups[grouped_kfold(original_groups, 5, seed=7)[0].test])
+
+    def check_population(features, target, groups, *args):
+        assert not set(groups) & holdout_groups
+        assert len(groups) < len(original_groups)
+        raise RuntimeError("selection population checked")
+
+    monkeypatch.setattr(experiment, "fit_calibrated", check_population)
+    with pytest.raises(RuntimeError, match="selection population checked"):
+        experiment.evaluate_lightgbm(
+            data / "dataset.csv", data / "geo_features.csv", exclude_holdout=True
+        )

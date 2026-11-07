@@ -204,8 +204,12 @@ def train_lightgbm(
     return metadata
 
 
-def evaluate_lightgbm(dataset, geo, *, seed=7):
+def evaluate_lightgbm(dataset, geo, *, seed=7, exclude_holdout=False):
     features, target, groups = load_data(dataset, geo)
+    if exclude_holdout:
+        development = grouped_kfold(groups, 5, seed)[0].train
+        features = features.iloc[development].reset_index(drop=True)
+        target, groups = target[development], groups[development]
     rows, diagnostics = [], []
     for fold, split in enumerate(grouped_kfold(groups, 5, seed)):
         train, calibration = split_calibration(split.train, groups, seed + 1)
@@ -236,7 +240,14 @@ def evaluate_lightgbm(dataset, geo, *, seed=7):
             )
             predictions, raw_predictions = predictions_cqr(model, parameters, test_features)
             diagnostics.append(
-                {"fold": fold, "with_geo": with_geo, "calibration": parameters, "tuning": tuning}
+                {
+                    "fold": fold,
+                    "with_geo": with_geo,
+                    "calibration": parameters,
+                    "tuning": tuning,
+                    "exclude_holdout": exclude_holdout,
+                    "population_rows": len(features),
+                }
             )
             for label, values in [("cqr_by_type", predictions), ("raw_quantile", raw_predictions)]:
                 for metrics in metric_segments(

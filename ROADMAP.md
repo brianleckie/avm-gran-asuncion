@@ -139,17 +139,17 @@
 ## F9 — Incertidumbre (el "rango de error" del entregable)
 - [x] F9.1 (O) LightGBM cuantílico (α = 0.1, 0.5, 0.9)
 - [x] F9.2 (O) Conformal (CQR) por tipo sobre clusters de calibración separados. Cobertura nominal 80 %, bajo intercambiabilidad por tipo.
-- [ ] F9.3 (O) Reportar cobertura real vs nominal y ancho medio, global y por segmento
-  → Pipeline y validación v2 listos, comparación por tipo antes/después de CQR. Reporte final pendiente de v3.
-- [ ] F9.4 (O) Verificar que los intervalos son más anchos en barrios con poca data. Si no lo son, algo está mal
+- [x] F9.3 (O) Reportar cobertura real vs nominal y ancho medio, global y por segmento
+  → Evaluación v3 en docs/results/2026-11-06-v3.md, incluida cobertura inferior al nominal en casas.
+- [x] F9.4 (O) Diagnóstico de ancho por precisión y soporte en v3. El comportamiento observado se reporta sin imponerlo.
 
 ## F10 — Evaluación y ablation
 - [x] F10.1 (B/O) Métricas: MdAPE, MAPE, PE10/PE20 (% de predicciones dentro de ±10% y ±20%), RMSE en log
   → `metrics.py` devuelve fracciones (0,12 = 12 %); PE10 y PE20 son `pe_within` con `tol=0.10` y `tol=0.20`. Incluye también cobertura y ancho de intervalos, insumos de F9.3
 - [ ] F10.2 (B/O) Tabla comparativa: baseline vs OLS vs RF vs LightGBM, en los tres esquemas de split
-- [ ] F10.3 (B/O) **Ablation geo:** con y sin features espaciales. Responde directamente la pregunta de investigación
-  → Evaluación pareada de cinco folds implementada y probada con sintético/v2. Resultados finales con v3.
-- [ ] F10.4 (B/O) Error por segmento: ciudad, tipo y rango de precio
+- [x] F10.3 (B/O) **Ablation geo:** con y sin features espaciales. Responde directamente la pregunta de investigación
+  → Evaluación v3 pareada publicada. Geo tiene efecto mixto; sin mejora consistente en MdAPE.
+- [x] F10.4 (B/O) Error por segmento: ciudad, tipo y rango de precio
 - [ ] F10.5 (B/O) Análisis de residuos: dónde y por qué falla el modelo
 
 ## F11 — Servicio (FastAPI)

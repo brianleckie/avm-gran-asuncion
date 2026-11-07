@@ -1,0 +1,549 @@
+{
+  "dataset_version": "v3",
+  "stage": "final",
+  "seed": 7,
+  "dataset_sha256": "182a75dfff108833dedeeb2374022953c799b2cb1b145ba562c99b55fbdc4763",
+  "geo_sha256": "f84284d245822689780ee725a37fa2f271448c65ad8aba009df3bd0bc472948b",
+  "diagnostics": [
+    {
+      "fold": 0,
+      "with_geo": false,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.18825893734163834,
+            "n_clusters": 125,
+            "n_rows": 130,
+            "rank": 101
+          },
+          "departamento": {
+            "qhat": 0.0342458847464,
+            "n_clusters": 95,
+            "n_rows": 107,
+            "rank": 77
+          },
+          "duplex": {
+            "qhat": 0.15159500333584042,
+            "n_clusters": 96,
+            "n_rows": 117,
+            "rank": 78
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 250,
+          "num_leaves": 31,
+          "min_child_samples": 30
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.27719739275929045
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.2747581737559521
+          }
+        ]
+      }
+    },
+    {
+      "fold": 0,
+      "with_geo": true,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.07862839877252537,
+            "n_clusters": 125,
+            "n_rows": 130,
+            "rank": 101
+          },
+          "departamento": {
+            "qhat": 0.0726718301032534,
+            "n_clusters": 95,
+            "n_rows": 107,
+            "rank": 77
+          },
+          "duplex": {
+            "qhat": 0.08909472743859936,
+            "n_clusters": 96,
+            "n_rows": 117,
+            "rank": 78
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 200,
+          "num_leaves": 15,
+          "min_child_samples": 20
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.2729643353384468
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.2739272105569454
+          }
+        ]
+      }
+    },
+    {
+      "fold": 1,
+      "with_geo": false,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.15362986087385533,
+            "n_clusters": 118,
+            "n_rows": 125,
+            "rank": 96
+          },
+          "departamento": {
+            "qhat": 0.11848365010252682,
+            "n_clusters": 98,
+            "n_rows": 108,
+            "rank": 80
+          },
+          "duplex": {
+            "qhat": 0.05538004997460089,
+            "n_clusters": 100,
+            "n_rows": 121,
+            "rank": 81
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 250,
+          "num_leaves": 31,
+          "min_child_samples": 30
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.27453032194890525
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.27182051945454044
+          }
+        ]
+      }
+    },
+    {
+      "fold": 1,
+      "with_geo": true,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.184164762857411,
+            "n_clusters": 118,
+            "n_rows": 125,
+            "rank": 96
+          },
+          "departamento": {
+            "qhat": 0.12489656736474153,
+            "n_clusters": 98,
+            "n_rows": 108,
+            "rank": 80
+          },
+          "duplex": {
+            "qhat": 0.10698375035210717,
+            "n_clusters": 100,
+            "n_rows": 121,
+            "rank": 81
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 250,
+          "num_leaves": 31,
+          "min_child_samples": 30
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.2729203477568824
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.26652559574167534
+          }
+        ]
+      }
+    },
+    {
+      "fold": 2,
+      "with_geo": false,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.15457771036632195,
+            "n_clusters": 117,
+            "n_rows": 127,
+            "rank": 95
+          },
+          "departamento": {
+            "qhat": 0.0646057166691465,
+            "n_clusters": 94,
+            "n_rows": 102,
+            "rank": 76
+          },
+          "duplex": {
+            "qhat": 0.04424886976294928,
+            "n_clusters": 105,
+            "n_rows": 125,
+            "rank": 85
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 200,
+          "num_leaves": 15,
+          "min_child_samples": 20
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.2747094787021627
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.2790519222349973
+          }
+        ]
+      }
+    },
+    {
+      "fold": 2,
+      "with_geo": true,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.1642987803693412,
+            "n_clusters": 117,
+            "n_rows": 127,
+            "rank": 95
+          },
+          "departamento": {
+            "qhat": 0.1016087741881373,
+            "n_clusters": 94,
+            "n_rows": 102,
+            "rank": 76
+          },
+          "duplex": {
+            "qhat": 0.03128310296909653,
+            "n_clusters": 105,
+            "n_rows": 125,
+            "rank": 85
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 200,
+          "num_leaves": 15,
+          "min_child_samples": 20
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.2624856996672297
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.2725049948102071
+          }
+        ]
+      }
+    },
+    {
+      "fold": 3,
+      "with_geo": false,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.105761091210681,
+            "n_clusters": 120,
+            "n_rows": 129,
+            "rank": 97
+          },
+          "departamento": {
+            "qhat": 0.04534608535339313,
+            "n_clusters": 89,
+            "n_rows": 98,
+            "rank": 72
+          },
+          "duplex": {
+            "qhat": 0.039162633351275566,
+            "n_clusters": 107,
+            "n_rows": 127,
+            "rank": 87
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 200,
+          "num_leaves": 15,
+          "min_child_samples": 20
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.2819380623835673
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.283645760425161
+          }
+        ]
+      }
+    },
+    {
+      "fold": 3,
+      "with_geo": true,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.09458229150286179,
+            "n_clusters": 120,
+            "n_rows": 129,
+            "rank": 97
+          },
+          "departamento": {
+            "qhat": 0.041304111694936196,
+            "n_clusters": 89,
+            "n_rows": 98,
+            "rank": 72
+          },
+          "duplex": {
+            "qhat": 0.03841507935717381,
+            "n_clusters": 107,
+            "n_rows": 127,
+            "rank": 87
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 200,
+          "num_leaves": 15,
+          "min_child_samples": 20
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.26979773631139814
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.27703302872947894
+          }
+        ]
+      }
+    },
+    {
+      "fold": 4,
+      "with_geo": false,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.22356998217146007,
+            "n_clusters": 125,
+            "n_rows": 136,
+            "rank": 101
+          },
+          "departamento": {
+            "qhat": 0.0,
+            "n_clusters": 94,
+            "n_rows": 96,
+            "rank": 76
+          },
+          "duplex": {
+            "qhat": 0.06894964782447133,
+            "n_clusters": 97,
+            "n_rows": 122,
+            "rank": 79
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 200,
+          "num_leaves": 15,
+          "min_child_samples": 20
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.27092533007870045
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.27130993811856435
+          }
+        ]
+      }
+    },
+    {
+      "fold": 4,
+      "with_geo": true,
+      "calibration": {
+        "method": "cqr_by_property_type_cluster_max",
+        "coverage_nominal": 0.8,
+        "score_scale": "log_usd_per_m2",
+        "segments": {
+          "casa": {
+            "qhat": 0.20054689647976165,
+            "n_clusters": 125,
+            "n_rows": 136,
+            "rank": 101
+          },
+          "departamento": {
+            "qhat": 0.0,
+            "n_clusters": 94,
+            "n_rows": 96,
+            "rank": 76
+          },
+          "duplex": {
+            "qhat": 0.06469596682891421,
+            "n_clusters": 97,
+            "n_rows": 122,
+            "rank": 79
+          }
+        }
+      },
+      "tuning": {
+        "selected": {
+          "n_estimators": 200,
+          "num_leaves": 15,
+          "min_child_samples": 20
+        },
+        "trials": [
+          {
+            "configuration": {
+              "n_estimators": 200,
+              "num_leaves": 15,
+              "min_child_samples": 20
+            },
+            "validation_mae_log": 0.2675136736258549
+          },
+          {
+            "configuration": {
+              "n_estimators": 250,
+              "num_leaves": 31,
+              "min_child_samples": 30
+            },
+            "validation_mae_log": 0.274459697215389
+          }
+        ]
+      }
+    }
+  ]
+}
