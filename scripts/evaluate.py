@@ -20,14 +20,22 @@ def main(argv=None):
     parser.add_argument("--dataset-version", required=True)
     parser.add_argument("--stage", choices=["development", "final"], default="development")
     parser.add_argument("--report", type=Path)
+    parser.add_argument(
+        "--selection-holdout",
+        action="store_true",
+        help="Reservar fold externo cero para test final, fuera de la selección",
+    )
     args = parser.parse_args(argv)
     if args.out.exists() or (args.report and args.report.exists()):
         raise FileExistsError("Elegí otra carpeta o reporte para conservar la corrida anterior")
-    rows, diagnostics = evaluate_lightgbm(args.dataset, args.geo, seed=args.seed)
+    rows, diagnostics = evaluate_lightgbm(
+        args.dataset, args.geo, seed=args.seed, exclude_holdout=args.selection_holdout
+    )
     summary = {
         "dataset_version": args.dataset_version,
         "stage": args.stage,
         "seed": args.seed,
+        "selection_excludes_outer_test": args.selection_holdout,
         "dataset_sha256": hashlib.sha256(args.dataset.read_bytes()).hexdigest(),
         "geo_sha256": hashlib.sha256(args.geo.read_bytes()).hexdigest(),
         "diagnostics": diagnostics,
@@ -62,6 +70,14 @@ def main(argv=None):
         "Se muestran medias y extremos por fold. Los folds usan los mismos clusters.",
         "",
     ]
+    if args.selection_holdout:
+        lines.extend(
+            [
+                "La selección compara modelos solo en desarrollo. El fold externo cero "
+                "original se reserva como test del artefacto final.",
+                "",
+            ]
+        )
     for keys, group in all_rows.groupby(["model", "with_geo", "interval"], sort=True):
         lines.extend([f"## {keys[0]} · geo={keys[1]} · {keys[2]}", ""])
         for column in [
