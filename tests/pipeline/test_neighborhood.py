@@ -41,7 +41,7 @@ def gazetteer(tmp_path: Path) -> Gazetteer:
         ("Bº San Roque", "san roque"),  # ordinal masculino
         ("Ñandú", "nandu"),
         ("Cañada", "canada"),
-        ("V. Morra", "v morra"),
+        ("V. Morra", "villa morra"),
         ("barriocito", "barriocito"),  # "barrio" solo como palabra entera
         ("", ""),
         ("Barrio", ""),
@@ -69,7 +69,7 @@ def test_the_canonical_name_may_include_the_word_barrio(gazetteer: Gazetteer) ->
 
 
 def test_alias_match(gazetteer: Gazetteer) -> None:
-    for zone in ("V. Morra", "vmorra"):
+    for zone in ("vmorra",):
         result = match_neighborhood(zone, City.ASUNCION, gazetteer)
         assert (result.name, result.match) == ("Villa Morra", NeighborhoodMatch.ALIAS)
     assert result.reason is Reason.MATCHED
@@ -157,3 +157,68 @@ def test_rows_without_a_barrio_or_alias_are_skipped_when_loading(tmp_path: Path)
     path.write_text("city,neighborhood,aliases\nluque,,\nluque,Uno,| |uno\n", encoding="utf-8")
     result = match_neighborhood("Uno", City.LUQUE, load_gazetteer(path))
     assert (result.name, result.match) == ("Uno", NeighborhoodMatch.EXACT)
+
+
+@pytest.mark.parametrize("zone", ["bº Villa Morra (Asunción)", "Zona V. Morra - Asunción"])
+def test_context_normalization(zone, gazetteer):
+    assert match_neighborhood(zone, City.ASUNCION, gazetteer).name == "Villa Morra"
+    assert normalize_name("Sta. Ana") == "santa ana"
+    assert normalize_name("Gral. Díaz") == "general diaz"
+    assert match_neighborhood("Villa Morra y Ñandú Norte", City.ASUNCION, gazetteer).name is None
+
+
+def test_manual_alias_is_scoped_and_recorded(tmp_path):
+    gazetteer_path = tmp_path / "gazetteer.csv"
+    gazetteer_path.write_text(GAZETTEER_CSV, encoding="utf-8")
+    aliases = tmp_path / "manual.csv"
+    aliases.write_text(
+        "city,alias,neighborhood,note\nasuncion,VM,Villa Morra,Variante revisada\n",
+        encoding="utf-8",
+    )
+    gazetteer = load_gazetteer(gazetteer_path, manual_aliases_path=aliases)
+    result = match_neighborhood("VM", City.ASUNCION, gazetteer)
+    assert result.name == "Villa Morra" and result.match == NeighborhoodMatch.MANUAL
+    assert match_neighborhood("VM", City.LUQUE, gazetteer).name is None
+
+
+def test_broad_north_south_areas_stay_unmatched(tmp_path):
+    p = tmp_path / "gazetteer.csv"
+    p.write_text(
+        "city,neighborhood,aliases\nfernando_de_la_mora,Zona Sur,zona sur\n", encoding="utf-8"
+    )
+    gazetteer = load_gazetteer(p)
+    for zone in ["Zona Sur", "Fernando de la Mora (Zona Norte)", "Norte", "Zona Norte"]:
+        assert match_neighborhood(zone, City.FERNANDO_DE_LA_MORA, gazetteer).name is None
+
+
+def test_normalization_collision_is_not_silently_assigned(tmp_path):
+    p = tmp_path / "gazetteer.csv"
+    p.write_text(
+        "city,neighborhood,aliases\nasuncion,General Díaz,\nasuncion,Gral. Díaz,\n",
+        encoding="utf-8",
+    )
+    result = match_neighborhood("Gral. Díaz", City.ASUNCION, load_gazetteer(p))
+    assert result.reason == Reason.AMBIGUOUS
+
+
+def test_manual_collision_and_optional_disable(tmp_path):
+    p = tmp_path / "gaz.csv"
+    p.write_text(GAZETTEER_CSV, encoding="utf-8")
+    aliases = tmp_path / "aliases.csv"
+    aliases.write_text(
+        "city,alias,neighborhood,note\nasuncion,VM,Villa Morra,x\nasuncion,VM,Ñandú Norte,x\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="manual ambiguo"):
+        load_gazetteer(p, manual_aliases_path=aliases)
+    assert not load_gazetteer(p, manual_aliases_path=None).is_empty
+
+
+def test_colliding_expanded_alias_is_ambiguous(tmp_path):
+    p = tmp_path / "gaz.csv"
+    p.write_text(
+        "city,neighborhood,aliases\nasuncion,Díaz,gral diaz\nasuncion,General Díaz,general diaz\n",
+        encoding="utf-8",
+    )
+    result = match_neighborhood("Gral. Díaz", City.ASUNCION, load_gazetteer(p))
+    assert result.reason == Reason.AMBIGUOUS
