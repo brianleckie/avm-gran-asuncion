@@ -1,7 +1,25 @@
 {
+  "method": "cqr_by_property_type_cluster_max",
   "coverage_nominal": 0.8,
-  "residual_low": -0.5102139999999995,
-  "residual_high": 0.42846980000000023,
-  "method": "empirical_signed_log_residuals",
-  "n_calibration": 354
+  "score_scale": "log_usd_per_m2",
+  "segments": {
+    "casa": {
+      "qhat": 0.07862839877252537,
+      "n_clusters": 125,
+      "n_rows": 130,
+      "rank": 101
+    },
+    "departamento": {
+      "qhat": 0.0726718301032534,
+      "n_clusters": 95,
+      "n_rows": 107,
+      "rank": 77
+    },
+    "duplex": {
+      "qhat": 0.08909472743859936,
+      "n_clusters": 96,
+      "n_rows": 117,
+      "rank": 78
+    }
+  }
 }
