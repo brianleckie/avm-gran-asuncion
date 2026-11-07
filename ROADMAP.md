@@ -132,6 +132,7 @@
 - [x] F8.3 (O) **Baseline:** mediana de log USD/m² por barrio, con respaldo tipo+ciudad, ciudad y global. Predictor I4 entregado con calibración y test agrupados.
 - [ ] F8.4 (O) Modelo hedónico OLS, interpretable y defendible ante el tribunal
 - [ ] F8.5 (O) Random Forest
+  → OLS y Random Forest quedan fuera de esta entrega por prioridad acordada: baseline, LightGBM, ablation y CQR por tipo.
 - [x] F8.6 (O) LightGBM con categóricas nativas y vocabularios ajustados solo en train (docs/lightgbm-cqr.md).
 - [ ] F8.7 (O) Tuning acotado (Optuna) con presupuesto fijo, evaluado solo en validación
 - [ ] F8.8 (O) Interpretabilidad: SHAP global y local, más dependencia parcial de m² y de las distancias
@@ -147,13 +148,15 @@
 - [x] F10.1 (B/O) Métricas: MdAPE, MAPE, PE10/PE20 (% de predicciones dentro de ±10% y ±20%), RMSE en log
   → `metrics.py` devuelve fracciones (0,12 = 12 %); PE10 y PE20 son `pe_within` con `tol=0.10` y `tol=0.20`. Incluye también cobertura y ancho de intervalos, insumos de F9.3
 - [ ] F10.2 (B/O) Tabla comparativa: baseline vs OLS vs RF vs LightGBM, en los tres esquemas de split
+  → Entrega acotada: baseline vs LightGBM con/sin features numéricas geo, con splits agrupados. Temporal y leave-barrio-out no se presentan como evaluados.
 - [x] F10.3 (B/O) **Ablation geo:** con y sin features espaciales. Responde directamente la pregunta de investigación
   → Evaluación v3 pareada publicada. Geo tiene efecto mixto; sin mejora consistente en MdAPE.
 - [x] F10.4 (B/O) Error por segmento: ciudad, tipo y rango de precio
 - [ ] F10.5 (B/O) Análisis de residuos: dónde y por qué falla el modelo
 
 ## F11 — Servicio (FastAPI)
-- [ ] F11.1 (B) Artefacto versionado: `models/<version>/` con modelo, metadata.json (versión de contrato, snapshot, métricas, fecha) y gazetteer
+- [x] F11.1 (B) Artefacto versionado: `models/<version>/` con modelo, metadata.json (versión de contrato, snapshot, métricas, fecha) y gazetteer
+  → Candidato v3 en deploy/model; guardia, just check y carga en Docker/Linux aprobados. Publicación v3 pendiente de merge humano y redeploy (deploy/README.md).
 - [x] F11.2 (B) Endpoints `POST /predict`, `GET /barrios?ciudad=`, `GET /health`, `GET /model-info`
   → `src/avm/api/`: depende del `PredictorProtocol` (firma de I4), no de una implementación. Se elige con `AVM_PREDICTOR=model|fake`; sin variable o si la carga falla, `/health` y `/predict` dan 503. `fake` solo para desarrollo y la API no arranca con `AVM_ENV=production`. `just serve`.
   → Decisión: `WarningCode` es un enum cerrado y el contrato no se tocó, así que el modelo de prueba NO se avisa con un warning `modelo_de_prueba`: la metadata declara `is_test_model: true`, `/predict` agrega el header `X-AVM-Test-Model: true` y la web muestra el banner desde `/model-info`.
@@ -182,6 +185,7 @@
   → `AVM_CORS_ORIGIN`, `AVM_RATE_LIMIT_PER_MIN` y `AVM_TRUST_PROXY=1` (rate limit por el último valor de `X-Forwarded-For`, solo con esa variable). Pendiente el chequeo manual post-deploy del comportamiento del proxy de Railway (`docs/deploy.md`).
 - [ ] F13.3 (B) Smoke test post-deploy
   → `scripts/smoke.py` / `just smoke <url> [--origin <web>]` listo y testeado; falta correrlo contra el deploy real.
+  → Smoke real con CORS aprobado contra 2026-11-05-baseline-real-v1. El candidato v3 aún requiere smoke después del merge/redeploy; no se marca ese paso como completado.
 
 ## F14 — Calidad transversal
 - [ ] F14.1 (B/O) Pipeline end-to-end reproducible con un solo comando, desde snapshot hasta modelo y métricas
@@ -189,11 +193,15 @@
 - [ ] F14.3 (B/O) Logging estructurado en scraping y API
 
 ## F15 — Documentación académica y defensa
-- [ ] F15.1 (B/O) Metodología: fuentes, ética del scraping, pipeline, dedup, features, modelos y evaluación
-- [ ] F15.2 (B/O) Limitaciones explícitas: precio publicado, sesgo de portales, geo a nivel barrio, temporalidad y cobertura desigual
-- [ ] F15.3 (B/O) Resultados: tablas de F10, ablation y cobertura de intervalos
+- [x] F15.1 (B/O) Metodología: fuentes, ética del scraping, pipeline, dedup, features, modelos y evaluación
+  → docs/metodologia.md; cifras enlazadas a reportes y protocolo exploratorio explícito.
+- [x] F15.2 (B/O) Limitaciones explícitas: precio publicado, sesgo de portales, geo a nivel barrio, temporalidad y cobertura desigual
+  → docs/limitaciones.md incluye cotización única, superficie de departamentos, garages vacío y casas debajo del nominal.
+- [x] F15.3 (B/O) Resultados: tablas de F10, ablation y cobertura de intervalos
+  → docs/results/2026-11-06-v3.md y CSV/JSON agregados de respaldo.
 - [ ] F15.4 (B/O) Bibliografía **verificada a mano**, sin referencias generadas por IA sin chequear
-- [ ] F15.5 (B/O) Demo y guion de defensa, más preguntas probables del tribunal con sus respuestas
+- [x] F15.5 (B/O) Demo y guion de defensa, más preguntas probables del tribunal con sus respuestas
+  → docs/defensa.md: agenda de ensayo y 15 preguntas con archivo de respaldo. Bibliografía y ensayo humano pendientes.
 
 ---
 
