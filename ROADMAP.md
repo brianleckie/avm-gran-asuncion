@@ -183,9 +183,8 @@
   → config lista, falta ejecutarlo en los dashboards: `Dockerfile`, `railway.toml` (healthcheck en `/live`), `GET /live` y `docs/deploy.md` con el paso a paso. Se verificó el arranque con `uv sync --frozen --no-dev` + `uvicorn` y el pasaje de 503 a 200 al aparecer `deploy/model/` (Docker no estaba activo, la imagen no se construyó). Web: root `web/`, `npm run build`, `dist`, `VITE_API_URL`. Decisión de cómo llega el modelo: [ADR-008](docs/adr/008-modelo-en-produccion.md) (`deploy/model/` versionado + guardia `scripts/check_deploy_model.py`, pendiente revisión de Oscar).
 - [x] F13.2 (B) Variables de entorno, CORS y rate limit básico en `/predict`
   → `AVM_CORS_ORIGIN`, `AVM_RATE_LIMIT_PER_MIN` y `AVM_TRUST_PROXY=1` (rate limit por el último valor de `X-Forwarded-For`, solo con esa variable). Pendiente el chequeo manual post-deploy del comportamiento del proxy de Railway (`docs/deploy.md`).
-- [ ] F13.3 (B) Smoke test post-deploy
-  → `scripts/smoke.py` / `just smoke <url> [--origin <web>]` listo y testeado; falta correrlo contra el deploy real.
-  → Smoke real con CORS aprobado contra 2026-11-05-baseline-real-v1. El candidato v3 aún requiere smoke después del merge/redeploy; no se marca ese paso como completado.
+- [x] F13.3 (B) Smoke test post-deploy
+  → Smoke real v3 + CORS aprobado después del merge de #23; evidencia y alcance en docs/results/smoke-v3-2026-11-08.md.
 
 ## F14 — Calidad transversal
 - [ ] F14.1 (B/O) Pipeline end-to-end reproducible con un solo comando, desde snapshot hasta modelo y métricas
@@ -200,6 +199,7 @@
 - [x] F15.3 (B/O) Resultados: tablas de F10, ablation y cobertura de intervalos
   → docs/results/2026-11-06-v3.md y CSV/JSON agregados de respaldo.
 - [ ] F15.4 (B/O) Bibliografía **verificada a mano**, sin referencias generadas por IA sin chequear
+  → docs/referencias.md incorpora fuentes originales y metadatos contrastados, con dos pendientes VERIFICAR. La revisión humana y el formato final siguen pendientes.
 - [x] F15.5 (B/O) Demo y guion de defensa, más preguntas probables del tribunal con sus respuestas
   → docs/defensa.md: agenda de ensayo y 15 preguntas con archivo de respaldo. Bibliografía y ensayo humano pendientes.
 

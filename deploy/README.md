@@ -2,7 +2,7 @@
 
 Lo que viaja a producción (ver [ADR-008](../docs/adr/008-modelo-en-produccion.md)).
 
-`deploy/model/` contiene el candidato `2026-11-06-v3-lightgbm-cqr`. Su publicación requiere el merge humano del PR y el redeploy de Railway. El estado del repositorio no prueba qué versión está sirviendo la API: verificar `/model-info` y ejecutar el smoke test después del merge.
+`deploy/model/` contiene `2026-11-06-v3-lightgbm-cqr`. Después del merge de #23, el smoke real confirmó esa versión en Railway el 08/11/2026, con contrato y CORS correctos: [evidencia](../docs/results/smoke-v3-2026-11-08.md). Para futuras publicaciones, el estado del repositorio no prueba qué versión sirve la API: confirmar la versión y ejecutar el smoke después del redeploy.
 
 La selección usa el menor MdAPE medio en validación de desarrollo, excluyendo el holdout final. Se eligió LightGBM con geo; la ablation completa no demuestra una mejora consistente por geo. Resultados, cobertura por tipo y límites en [el informe v3](../docs/results/2026-11-06-v3.md).
 
@@ -24,4 +24,4 @@ Después del merge, confirmar `model_version=2026-11-06-v3-lightgbm-cqr` en `/mo
 just smoke https://avm-gran-asuncion-production.up.railway.app --origin https://avm-gran-asuncion.vercel.app
 ```
 
-El smoke realizado antes de este PR pasó contra `2026-11-05-baseline-real-v1`; no valida el despliegue del candidato v3. No se reemplaza el artefacto por resultados de test: el criterio de selección y la separación de conjuntos están registrados en `model/metadata.json`.
+El smoke anterior a #23 pasó contra el baseline; el [smoke posterior al merge](../docs/results/smoke-v3-2026-11-08.md) ya valida disponibilidad, contrato y CORS del v3 desplegado. No se reemplaza el artefacto por resultados de test: el criterio de selección y la separación de conjuntos están registrados en `model/metadata.json`.

@@ -66,8 +66,6 @@ Parámetros de datos: [reporte generado](results/v3-quality-report.md). CLI y va
 
 El artefacto final contiene parámetros y agregados, no filas de avisos. Su merge humano dispara el redeploy; la versión activa se comprueba en la API, no por la existencia del PR. Fuentes: [ADR-008](adr/008-modelo-en-produccion.md), [guardia](../scripts/check_deploy_model.py) y [publicación](../deploy/README.md).
 
-## Bibliografía pendiente
+## Referencias
 
-[REFERENCIAS — completar a mano]
-
-Verificar y completar referencias de boosting, regresión cuantílica, conformal/CQR y datos OpenStreetMap. Los enlaces internos anteriores respaldan la implementación y sus cifras; no sustituyen bibliografía académica verificada.
+La [lista de referencias contrastadas](referencias.md) reúne autores, año o ausencia explícita de fecha, título, DOI/URL, tema y alcance de uso. Incluye los fundamentos de modelos hedónicos, métricas, LightGBM, CQR, particiones agrupadas, OSM/ODbL y robots.txt. Dos entradas complementarias tienen pendientes marcados **VERIFICAR**; no se afirma cumplimiento de IAAO. Las cifras de resultados siguen respaldadas por los reportes internos. Falta la revisión bibliográfica humana final y su adaptación al formato de la facultad.

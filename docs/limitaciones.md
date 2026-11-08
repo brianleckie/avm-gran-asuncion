@@ -40,10 +40,10 @@ El ancho relativo medio es 84,41 % global y 102,82 % en casas: el intervalo pued
 
 ## Operación y pendientes
 
-La versión documentada es un candidato revisable. Solo se considera publicada cuando el merge humano y el redeploy terminan, `/model-info` informa su versión y pasa el smoke real. La salud del baseline anterior no prueba la del candidato. Fuentes: [deploy](../deploy/README.md) y [smoke](../scripts/smoke.py).
+La versión v3 fue confirmada en Railway por el [smoke posterior al merge](results/smoke-v3-2026-11-08.md). Esta verificación prueba disponibilidad, contrato y CORS en ese momento, no calidad predictiva ni un recorrido visual completo de la web. Para futuras publicaciones hay que confirmar la versión nueva después del redeploy. Fuentes: [deploy](../deploy/README.md) y [smoke](../scripts/smoke.py).
 
 Quedan fuera de esta entrega OLS, Random Forest y los tests temporal/leave-barrio-out. Tampoco se presentan SHAP, comparables ni una serie histórica de cotizaciones como entregados. Se priorizaron pipeline, Predictor, ablation y calibración por tipo. Fuente: [ROADMAP](../ROADMAP.md).
 
 ## Referencias
 
-[REFERENCIAS — completar a mano]
+[Lista de fuentes, metadatos y pendientes explícitos](referencias.md). La revisión humana final sigue pendiente.

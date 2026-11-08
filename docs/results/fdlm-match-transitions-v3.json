@@ -1,0 +1,27 @@
+{
+  "city": "fernando_de_la_mora",
+  "n_rows": 277,
+  "before_revision": "377e192^",
+  "after_revision": "377e192",
+  "inputs": [
+    "data/processed/v3-before/2026-10-06_2026-11-04/dataset.csv: solo listing_key y city",
+    "data/interim/2026-10-06/clasipar/raw_listings.jsonl: solo source, source_id, city_raw, neighborhood_raw",
+    "data/interim/2026-11-04/clasipar/raw_listings.jsonl: mismos campos, prevalece snapshot reciente",
+    "data/reference/gazetteer.csv"
+  ],
+  "method": "Reejecutar ambos matchers sobre las mismas zonas y el mismo gazetteer, sin leer precios para decidir matches; publicar solo conteos agregados.",
+  "transitions": [
+    {"before": "exacto", "after": "exacto", "n": 11},
+    {"before": "exacto", "after": "ambiguo", "n": 12},
+    {"before": "igual_a_la_ciudad", "after": "igual_a_la_ciudad", "n": 19},
+    {"before": "no_matchea", "after": "exacto", "n": 1},
+    {"before": "no_matchea", "after": "manual", "n": 2},
+    {"before": "no_matchea", "after": "ambiguo", "n": 74},
+    {"before": "no_matchea", "after": "igual_a_la_ciudad", "n": 10},
+    {"before": "no_matchea", "after": "no_matchea", "n": 100},
+    {"before": "sin_zona", "after": "sin_zona", "n": 48}
+  ],
+  "removed_exact_canonical_name": "Zona Sur",
+  "removed_exact_count": 12,
+  "interpretation": "Coincidencias textuales exactas con una zona amplia no prueban identidad con un barrio concreto; no es verificación individual de ubicación."
+}

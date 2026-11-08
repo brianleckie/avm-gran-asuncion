@@ -6,6 +6,8 @@ Abrir la [web](https://avm-gran-asuncion.vercel.app), la [información del model
 
 Antes del ensayo ejecutar el smoke indicado en [deploy/README](../deploy/README.md). Comparar `model_version` de la API con la del artefacto: la web puede seguir sirviendo el baseline hasta el merge y redeploy del candidato. Las métricas de v3 pertenecen al informe, no a una versión activa que no se haya verificado.
 
+Estado comprobado el 08/11/2026: Railway sirve v3 y el smoke pasó después del merge de #23. [Registro y alcance de la verificación](results/smoke-v3-2026-11-08.md). Repetir antes de la presentación porque el estado del servicio puede cambiar.
+
 ## Guion propuesto de diez minutos
 
 Estos tiempos son una agenda de ensayo, no mediciones de rendimiento.
@@ -25,6 +27,26 @@ Estos tiempos son una agenda de ensayo, no mediciones de rendimiento.
 **9:00–10:00 — Cierre de la demo.** Brian muestra la página de metodología, la versión activa y el recorrido API/web. Proponer nuevos snapshots, revisión de superficies y más cobertura de barrios como próximos pasos; distinguirlos del trabajo ya entregado. Respaldo: [deploy](deploy.md), [ROADMAP](../ROADMAP.md) y [limitaciones](limitaciones.md).
 
 ## Preguntas probables y respuestas cortas
+
+### Respuestas orales de modelo y geo [OSCAR]
+
+Guía para ensayar el domingo 08/11/2026 a las 19:30, hora de Asunción. Las respuestas siguientes son texto de práctica, no una transcripción de un ensayo ya realizado. Recordar la idea y el límite de cada respuesta, sin memorizar cifras de protocolos distintos.
+
+**(a) ¿Por qué LightGBM le gana al baseline?** «El baseline asigna medianas por ubicación y tipo: dos inmuebles del mismo grupo pueden recibir el mismo precio por metro cuadrado aunque cambien sus atributos. LightGBM puede aprender relaciones no lineales e interacciones entre superficie, ambientes y amenities. En nuestros folds agrupados, el MdAPE medio baja de 22,1 % del baseline a 18,2 % con geo. Ese resultado es compatible con aprovechar mejor esos atributos; no probamos qué feature explica la mejora ni que ocurra en cualquier muestra». Fuentes: [baseline](../src/avm/model/baseline.py), [LightGBM](../src/avm/model/lgbm.py) y [CV completa](results/v3-all-folds-metrics.csv).
+
+**(b) ¿Por qué la geo no mejora?** «Al retirar distancias y conteos, el MdAPE medio pasa de 18,2 % con geo a 18,1 % sin geo: no vemos una mejora consistente. Solo el 27,8 % tiene barrio reconocido; el resto usa referencias de ciudad, y dentro de cada barrio esas features son iguales para todos. Eso puede limitar su aporte y redundar con ciudad/barrio, que siguen presentes en ambas variantes. Son explicaciones plausibles, no causas demostradas: el RMSE log sí mejora con geo y en desarrollo separado la selección la favoreció». Fuentes: [ablation completa](results/v3-all-folds-ablation.csv), [calidad](results/v3-quality-report.md), [informe que separa ambos protocolos](results/2026-11-06-v3.md) y [features](../src/avm/model/lgbm.py).
+
+**(c) ¿Por qué la cobertura de casas es 74 % y no 80 %?** «El 80 % es una cobertura nominal del procedimiento bajo intercambiabilidad de clusters de casas, no un porcentaje exacto que deba repetirse en cada test. En este test, 97 de 131 casas quedaron dentro: 74,05 %. Calibramos con otros 125 clusters de casas, pero el tamaño finito y posibles diferencias entre calibración y test pueden afectar la cobertura observada. No medimos una causa única ni podemos asegurar que solo sea azar: es subcobertura observada que reportamos como limitación, sin retocar el intervalo con el test». Fuentes: [metadata por tipo](results/v3-model-summary.json), [calibración publicada](../deploy/model/calibration.json), [cálculo](../src/avm/model/conformal.py) y [referencias conformales](referencias.md#conformal-prediction-y-cqr).
+
+**(d) CQR en una frase.** «CQR toma un intervalo de regresión cuantílica y lo corrige con errores de un conjunto de calibración separado para buscar la cobertura nominal bajo intercambiabilidad; nosotros calibramos por tipo y usamos el peor error de cada cluster». Fuentes: [Romano, Patterson y Candès (2019)](https://arxiv.org/abs/1905.03222), [adaptación implementada](../src/avm/model/conformal.py) y [referencias](referencias.md).
+
+**Repregunta: ¿cómo explicás Fernando de la Mora?** «Doce coincidencias con Zona Sur daban una precisión de barrio que no podíamos sostener. Las bloqueamos; entró un exacto nuevo y por eso el total exacto baja once. De los 86 ambiguos, 74 ya estaban sin match: no perdimos 86 barrios». Respaldo: [párrafo auditado](alias-barrios-v3.md) y [transiciones](results/fdlm-match-transitions-v3.json).
+
+Para evitar mezclar resultados: las cifras 22,1 / 18,2 / 18,1 % son **medias de MdAPE de folds de la CV completa**, no una mediana global concatenada, ni el test del artefacto. La selección en desarrollo separado da 22,06 / 18,32 / 18,63 % (baseline / con geo / sin geo); el test del candidato da MdAPE 20,92 %. Fuentes: [CV completa](results/v3-all-folds-metrics.csv), [selección](results/v3-selection-metrics.csv) y [test](results/v3-model-summary.json).
+
+Ensayo sugerido: responder cada letra sin leer, explicar qué compara cada cifra y aceptar la repregunta «¿cómo lo comprobaste?». La respuesta debe señalar el archivo correspondiente y distinguir evidencia de hipótesis. No presentar el análisis exploratorio como validación prospectiva.
+
+### Banco general de preguntas
 
 1. **¿Qué predice exactamente?** Precio publicado de oferta por m² construido; el total multiplica por la superficie. No conocemos el monto de cierre. Respaldo: [ADR-001](adr/001-precio-publicado.md) y [contrato](../src/avm/contract/prediction.py).
 
@@ -56,8 +78,6 @@ Estos tiempos son una agenda de ensayo, no mediciones de rendimiento.
 
 15. **¿Qué falta para generalizar mejor?** Nuevos períodos, revisión de superficies, cobertura de barrios y evaluación independiente temporal/espacial. OLS, RF, SHAP y comparables no se presentan como completados. Respaldo: [limitaciones](limitaciones.md) y [ROADMAP](../ROADMAP.md).
 
-## Referencias para completar antes de entregar
+## Referencias para la defensa
 
-[REFERENCIAS — completar a mano]
-
-Completar bibliografía académica y verificarla manualmente. Las respuestas anteriores enlazan archivos que respaldan lo implementado y medido.
+Consultar [referencias con metadatos, enlaces originales y alcance](referencias.md). Revisar a mano los pendientes **VERIFICAR** y el formato exigido por la facultad; no atribuir los umbrales PE10/PE20 a un estándar sin comprobarlo. Los archivos enlazados en cada respuesta respaldan lo implementado y medido.
