@@ -6,6 +6,9 @@ respuesta, no un texto que el frontend pueda omitir.
 El request no admite coordenadas: el formulario pide barrio, no dirección (ADR-003). Exige
 `built_area_m2` porque el valor total se obtiene como USD/m² × m² (F8.1); que el denominador del
 target sea la superficie construida es una decisión provisoria (ADR-006, P13).
+
+
+Este es nuestro contrato tipado
 """
 
 from typing import Annotated, Final, Literal, Self
