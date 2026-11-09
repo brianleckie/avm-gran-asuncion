@@ -61,6 +61,27 @@ Con `AVM_TRUST_PROXY` apagado, el header se ignora. No activarlo si la API es al
 2. Copiar `models/<version>/` a `deploy/model/` (ver [deploy/README.md](../deploy/README.md)), correr `uv run python scripts/check_deploy_model.py`, commit y push. Railway redeploya.
 3. `just smoke https://<url-railway> --origin https://<dominio-vercel>`: ahora `/health` 200 y el `/predict` de ejemplo se valida contra el contrato (falla si la API sirve un modelo de prueba).
 
+## Docker Compose (local)
+
+`docker-compose.yml` (raíz) levanta todo en la máquina, sin Railway ni Vercel:
+
+```powershell
+docker compose up --build
+```
+
+| Servicio | Imagen | URL | Notas |
+|---|---|---|---|
+| `api` | `Dockerfile` de la raíz | http://localhost:8000 | `AVM_ENV=production`, `AVM_PREDICTOR=model`, `AVM_MODEL_DIR=deploy/model`, `AVM_CORS_ORIGIN=http://localhost:8080`. Healthcheck sobre `/health` (listo solo con modelo cargado) |
+| `web` | `web/Dockerfile` (multi-stage) | http://localhost:8080 | Build con Node 22 y `VITE_API_URL=http://localhost:8000`; se sirve con nginx (`web/nginx.conf`). Arranca cuando la API está sana |
+
+- `VITE_API_URL` se incrusta al compilar y la usa el **navegador**, por eso es `localhost` y no el nombre del servicio. Si cambiás el puerto de la API o de la web, cambiá también `AVM_CORS_ORIGIN` y `VITE_API_URL` en el compose y reconstruí (`--build`).
+- Smoke test: `just smoke http://localhost:8000 --origin http://localhost:8080`.
+- Apagar: `docker compose down`.
+- El modelo sale de `deploy/model/`, que se copia a la imagen: tras cambiarlo hay que reconstruir.
+- `AVM_TRUST_PROXY` no se define: no hay proxy delante de la API y el rate limit usa la IP de la conexión.
+
+**Estado de verificación:** la sintaxis del compose se validó con `docker compose config`. Las imágenes **no se construyeron** al escribir esto porque Docker Desktop estaba apagado. Sí se corrió la API (`uvicorn`) con las mismas variables de entorno y `just smoke http://localhost:8000 --origin http://localhost:8080` dio `RESULTADO: OK` (`/health` 200 con `model_version=2026-11-06-v3-lightgbm-cqr`, `/predict` válido contra el contrato, CORS permitido). Falta correr `docker compose up --build` con Docker encendido.
+
 ## Local
 
 - API: `just serve` (ver README). Healthcheck local: `curl http://127.0.0.1:8000/live`.

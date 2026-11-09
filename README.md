@@ -45,6 +45,16 @@ just serve
 
 También puede cargarse `models/<version>/`. Variables y comportamiento en [configuración de API](src/avm/api/config.py). El predictor fake es exclusivamente de desarrollo.
 
+### Con Docker Compose
+
+Con Docker Desktop encendido, un solo comando levanta la API (con el modelo de `deploy/model/`) y la web:
+
+```powershell
+docker compose up --build
+```
+
+La web queda en http://localhost:8080 y la API en http://localhost:8000. En otra terminal, `just smoke http://localhost:8000 --origin http://localhost:8080` verifica API y CORS. Detalles en [docs/deploy.md](docs/deploy.md#docker-compose-local).
+
 ## Deploy
 
 API en Railway (`Dockerfile`, `railway.toml`) y web en Vercel (`web/`). Sin modelo, la API queda viva (`/live` 200) y no lista (`/health` 503). Paso a paso, variables y smoke test (`just smoke <url>`) en [docs/deploy.md](docs/deploy.md); cómo llega el modelo a producción, en [ADR-008](docs/adr/008-modelo-en-produccion.md).

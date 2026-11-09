@@ -1,0 +1,35 @@
+# Levanta la API y la web en local: `docker compose up --build` (ver docs/deploy.md, sección Docker).
+# API en http://localhost:8000, web en http://localhost:8080.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      AVM_ENV: production
+      AVM_PREDICTOR: model
+      AVM_MODEL_DIR: deploy/model
+      # Origen de la web de este compose: un solo origen, con esquema y sin barra final.
+      AVM_CORS_ORIGIN: http://localhost:8080
+      # PORT no se define: la imagen usa 8000 por defecto (en Railway lo inyecta la plataforma).
+    healthcheck:
+      # /health exige modelo cargado (readiness); la imagen no trae curl, se usa Python.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  web:
+    build:
+      context: ./web
+      args:
+        # La URL la usa el navegador del usuario, por eso es localhost y no el nombre del servicio.
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
