@@ -40,6 +40,8 @@
   --touch: 2.75rem;
   --ease: 150ms ease-out;
 
+  /* Controles nativos (popup del <select>, scrollbars) siguen el esquema del sistema. Sin esto, en
+     Windows/Chrome el popup queda claro mientras el texto hereda --ink claro: blanco sobre blanco. */
   color-scheme: light dark;
 }
 
@@ -199,6 +201,14 @@ a:hover {
   border-bottom: 1px solid var(--ink);
 }
 
+/* Franja de 4 px con los colores aproximados de la bandera (rojo, blanco, azul). Solo decorativa. */
+.site-header::before {
+  content: "";
+  display: block;
+  height: 4px;
+  background: linear-gradient(to right, #d52b1e 0 33.34%, #ffffff 33.34% 66.67%, #0038a8 66.67% 100%);
+}
+
 .header-row {
   display: flex;
   flex-direction: column;
@@ -337,6 +347,14 @@ select {
     calc(100% - 0.25rem) 55%;
   background-size: 0.35rem 0.35rem;
   background-repeat: no-repeat;
+}
+
+/* El popup de <select> lo dibuja el sistema y no hereda el fondo transparente del control: se fija
+   explícito en claro y oscuro (los tokens ya cambian con prefers-color-scheme). */
+select option,
+select optgroup {
+  background-color: var(--paper);
+  color: var(--ink);
 }
 
 select:disabled {
