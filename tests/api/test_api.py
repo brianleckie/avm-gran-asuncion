@@ -314,11 +314,44 @@ def test_rate_limit_uses_last_forwarded_for_with_trust_proxy() -> None:
 
 
 def test_cors_allows_only_configured_origin() -> None:
-    with _client(Settings(predictor="fake", cors_origin="http://localhost:5173")) as c:
+    with _client(Settings(predictor="fake", cors_origins=("http://localhost:5173",))) as c:
         ok = c.get("/health", headers={"Origin": "http://localhost:5173"})
         other = c.get("/health", headers={"Origin": "http://evil.example"})
     assert ok.headers["access-control-allow-origin"] == "http://localhost:5173"
     assert "access-control-allow-origin" not in other.headers
+
+
+def test_cors_allows_each_configured_origin_from_env() -> None:
+    cfg = Settings.from_env(
+        {
+            "AVM_PREDICTOR": "fake",
+            "AVM_CORS_ORIGIN": " https://a.vercel.app , https://b.example,",
+        }
+    )
+    with _client(cfg) as c:
+        a = c.get("/health", headers={"Origin": "https://a.vercel.app"})
+        b = c.get("/health", headers={"Origin": "https://b.example"})
+        other = c.get("/health", headers={"Origin": "https://evil.example"})
+        preflight = c.options(
+            "/predict",
+            headers={
+                "Origin": "https://b.example",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type",
+            },
+        )
+    assert a.headers["access-control-allow-origin"] == "https://a.vercel.app"
+    assert b.headers["access-control-allow-origin"] == "https://b.example"
+    assert "access-control-allow-origin" not in other.headers
+    assert preflight.headers["access-control-allow-origin"] == "https://b.example"
+
+
+@pytest.mark.parametrize("raw", ["", "  ", " , "])
+def test_no_cors_with_empty_env_value(raw: str) -> None:
+    cfg = Settings.from_env({"AVM_PREDICTOR": "fake", "AVM_CORS_ORIGIN": raw})
+    with _client(cfg) as c:
+        r = c.get("/health", headers={"Origin": "http://localhost:5173"})
+    assert "access-control-allow-origin" not in r.headers
 
 
 def test_no_cors_without_origin(client: TestClient) -> None:

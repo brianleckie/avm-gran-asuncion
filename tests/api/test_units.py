@@ -34,7 +34,33 @@ def test_settings_defaults_and_parsing() -> None:
         True,
         5,
     )
-    assert s.cors_origin == "https://x.vercel.app"
+    assert s.cors_origins == ("https://x.vercel.app",)
+    assert Settings.from_env({}).cors_origins == ()
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # Un solo origen: igual que antes.
+        ("https://a.vercel.app", ("https://a.vercel.app",)),
+        # Varios, separados por comas.
+        (
+            "https://a.vercel.app,https://b.example",
+            ("https://a.vercel.app", "https://b.example"),
+        ),
+        # Espacios alrededor de cada origen y elementos vacíos (coma final, comas dobles).
+        (
+            "  https://a.vercel.app ,  https://b.example  ,, ,",
+            ("https://a.vercel.app", "https://b.example"),
+        ),
+        # Vacío, solo espacios o solo comas: ningún origen.
+        ("", ()),
+        ("   ", ()),
+        (" , ,, ", ()),
+    ],
+)
+def test_settings_cors_origins(raw: str, expected: tuple[str, ...]) -> None:
+    assert Settings.from_env({"AVM_CORS_ORIGIN": raw}).cors_origins == expected
 
 
 @pytest.mark.parametrize(
