@@ -8,7 +8,7 @@ Automated Valuation Model (AVM) que estima el **precio de oferta** por m² y el 
 
 ## Estado y resultados
 
-Baseline y Predictor están implementados. El candidato v3 usa LightGBM con CQR por tipo; su publicación requiere revisión, merge humano y redeploy. Consultar `model_version` en la API para conocer el artefacto realmente activo. Procedimiento en [deploy/README](deploy/README.md).
+Baseline y Predictor están implementados. El v3 usa LightGBM con CQR por tipo y su versión fue confirmada en Railway después del merge de #23: [smoke del 08/11/2026](docs/results/smoke-v3-2026-11-08.md). Consultar `model_version` en la API para conocer el artefacto activo al momento de usarla. Procedimiento en [deploy/README](deploy/README.md).
 
 El dataset v3 tiene 1.769 filas y 27,8 % de barrio reconocido. En el test del candidato: MdAPE 20,92 %, cobertura global 78,53 % y casas 74,05 %, por debajo del nominal 80 %. La ablation da un efecto mixto de geo; el menor error en departamentos requiere cautela por la superficie sin tipo. Fuentes: [calidad](docs/results/v3-quality-report.md), [metadata](docs/results/v3-model-summary.json) y [evaluación/selección](docs/results/2026-11-06-v3.md).
 
@@ -59,6 +59,6 @@ API en Railway (`Dockerfile`, `railway.toml`) y web en Vercel (`web/`). Sin mode
 
 ## Referencias
 
-[REFERENCIAS — completar a mano]
+[Referencias contrastadas y pendientes explícitos](docs/referencias.md). Falta revisión humana del formato y de los pasajes marcados VERIFICAR.
 
 © OpenStreetMap contributors, ODbL. Detalles y límites de la referencia geográfica en [docs/geo.md](docs/geo.md).

@@ -8,6 +8,8 @@ El archivo neighborhood_aliases.csv contiene exclusivamente variantes revisadas 
 Las categorías b/d quedan fuera del archivo manual. El umbral fuzzy continúa en 90.
 Las referencias amplias norte/sur de Fernando de la Mora quedan sin asignación a barrio.
 
+En Fernando de la Mora, los «exactos» bajan de 23 a 12 porque se retiran **12 coincidencias antiguas con el nombre canónico «Zona Sur»** del gazetteer y entra **1 exacto nuevo**: 11 se conservan y 1 se incorpora. Antes, variantes de mayúsculas de «Zona Sur» coincidían literalmente con esa entrada; esa igualdad de texto no identificaba un barrio concreto dentro de una zona amplia. Son falsos positivos de **precisión barrial**, no ubicaciones erróneas comprobadas individualmente. Ahora la normalización retira ciudad y marcadores como «zona» y bloquea explícitamente «norte»/«sur» en ese municipio como ambiguos. Las 86 filas ambiguas son las 12 que antes figuraban como exactas más 74 que ya estaban sin match y ahora reciben un motivo más informativo; no se perdieron 86 barrios válidos. Con 2 matches manuales nuevos, el total reconocido pasa de 23 a 14 sobre 277 filas (8,3 % a 5,1 %), priorizando no asignar un barrio sin evidencia. Fuente: [transiciones auditadas sobre los mismos registros, sin precios](results/fdlm-match-transitions-v3.json), [matcher](../src/avm/pipeline/neighborhood.py) y sección 3 antes/después de este documento.
+
 Las consultas OSM no confirmaron nuevas geometrías municipales para los faltantes revisados.
 Laguna Grande encontrado pertenece a Fernando de la Mora y Laurelty a Luque. Ambos ya figuran en I2.
 Los candidatos restantes requieren una fuente espacial antes de agregarlos.
