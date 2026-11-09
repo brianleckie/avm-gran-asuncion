@@ -31,7 +31,7 @@ def no_model(tmp_path: Path) -> Iterator[TestClient]:
 
 @pytest.fixture
 def fake() -> Iterator[TestClient]:
-    yield from _client(Settings(predictor="fake", cors_origin=ORIGIN))
+    yield from _client(Settings(predictor="fake", cors_origins=(ORIGIN,)))
 
 
 def _run(client: httpx.Client, **kwargs: Any) -> bool:

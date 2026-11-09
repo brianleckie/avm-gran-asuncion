@@ -15,7 +15,7 @@ Arquitectura: la API (`Dockerfile` + `railway.toml`) corre en Railway; la web (`
 | `AVM_ENV` | `production` | También es el default de la imagen. Prohíbe el predictor `fake` y los modelos de prueba |
 | `AVM_PREDICTOR` | `model` | |
 | `AVM_MODEL_DIR` | `deploy/model` | Relativa al directorio de trabajo de la imagen (`/app`) |
-| `AVM_CORS_ORIGIN` | `https://<dominio-de-vercel>` | Un solo origen, con `https://` y sin barra final |
+| `AVM_CORS_ORIGIN` | `https://<dominio-de-vercel>` | Un origen o varios separados por comas (`https://a.vercel.app,https://b.example`); cada uno con `https://` y sin barra final. Se ignoran espacios y elementos vacíos |
 | `AVM_TRUST_PROXY` | `1` | El rate limit usa el **último** valor de `X-Forwarded-For` |
 | `AVM_RATE_LIMIT_PER_MIN` | (opcional) | Default 30 por IP en `POST /predict` |
 
@@ -41,7 +41,7 @@ Necesitás la URL de Railway para Vercel y la de Vercel para CORS: **Railway →
    just smoke https://<url-railway> --origin https://<dominio-vercel>
    ```
    Tiene que mostrar "GET permitido" y "preflight de POST /predict permitido".
-9. **Abrir la web.** Debe cargar (sin modelo, con el aviso de servicio no disponible). Solo el dominio de producción funciona contra la API: los *preview deployments* de Vercel tienen otra URL y CORS admite un único origen.
+9. **Abrir la web.** Debe cargar (sin modelo, con el aviso de servicio no disponible). Solo funcionan contra la API los orígenes listados en `AVM_CORS_ORIGIN`: los *preview deployments* de Vercel tienen otra URL y, para usarlos, hay que agregarla a la lista (separada por coma) y redeployar la API.
 
 ## Chequeo manual del rate limit detrás del proxy
 

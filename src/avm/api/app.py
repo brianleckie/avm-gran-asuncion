@@ -61,10 +61,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
 
-    if cfg.cors_origin:
+    if cfg.cors_origins:
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=[cfg.cors_origin],
+            allow_origins=list(cfg.cors_origins),
             allow_methods=["GET", "POST"],
             allow_headers=["Content-Type"],
             expose_headers=[TEST_MODEL_HEADER],

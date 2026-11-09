@@ -6,7 +6,9 @@ Variables:
 - AVM_MODEL_DIR: carpeta models/<version>/ (solo con AVM_PREDICTOR=model).
 - AVM_ENV: "production" (o "prod") prohíbe el predictor "fake" y cualquier predictor que se
   declare modelo de prueba (`is_test_model`). Sin valor se asume desarrollo: definirla en el deploy.
-- AVM_CORS_ORIGIN: único origen permitido por CORS. Sin valor, no se permite ninguno.
+- AVM_CORS_ORIGIN: orígenes permitidos por CORS: uno solo o una lista separada por comas
+  (`https://a.vercel.app,https://b.example`). Se descartan espacios alrededor de cada origen y los
+  elementos vacíos. Sin valor (o solo comas y espacios), no se permite ninguno.
 - AVM_RATE_LIMIT_PER_MIN: pedidos por minuto y por IP en POST /predict.
 - AVM_TRUST_PROXY: "1" (o "true") si la API corre detrás de un proxy de confianza (Railway): el rate
   limit toma la IP del ÚLTIMO valor de X-Forwarded-For (el que agrega el proxy). Sin valor se usa la
@@ -29,12 +31,19 @@ PRODUCTION_ENV_VALUES = frozenset({"production", "prod"})
 TRUTHY_VALUES = frozenset({"1", "true"})
 
 
+def parse_origins(raw: str | None) -> tuple[str, ...]:
+    """Parsea una lista de orígenes separada por comas: sin espacios ni elementos vacíos."""
+    if not raw:
+        return ()
+    return tuple(origin for part in raw.split(",") if (origin := part.strip()))
+
+
 @dataclass(frozen=True)
 class Settings:
     predictor: str | None = None
     model_dir: str | None = None
     env: str = "development"
-    cors_origin: str | None = None
+    cors_origins: tuple[str, ...] = ()
     rate_limit_per_min: int = DEFAULT_RATE_LIMIT_PER_MIN
     trust_proxy: bool = False
 
@@ -63,7 +72,7 @@ class Settings:
             predictor=(get("AVM_PREDICTOR") or "").lower() or None,
             model_dir=get("AVM_MODEL_DIR"),
             env=get("AVM_ENV") or "development",
-            cors_origin=get("AVM_CORS_ORIGIN"),
+            cors_origins=parse_origins(get("AVM_CORS_ORIGIN")),
             rate_limit_per_min=limit,
             trust_proxy=(get("AVM_TRUST_PROXY") or "").lower() in TRUTHY_VALUES,
         )

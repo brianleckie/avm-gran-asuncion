@@ -185,6 +185,8 @@
   → `AVM_CORS_ORIGIN`, `AVM_RATE_LIMIT_PER_MIN` y `AVM_TRUST_PROXY=1` (rate limit por el último valor de `X-Forwarded-For`, solo con esa variable). Pendiente el chequeo manual post-deploy del comportamiento del proxy de Railway (`docs/deploy.md`).
 - [x] F13.3 (B) Smoke test post-deploy
   → Smoke real v3 + CORS aprobado después del merge de #23; evidencia y alcance en docs/results/smoke-v3-2026-11-08.md.
+- [x] F13.5 (B) `AVM_CORS_ORIGIN` acepta varios orígenes separados por comas
+  → `Settings.cors_origins` (tupla; reemplaza a `cors_origin`): se descartan espacios y vacíos, y `app.py` pasa la lista completa a `allow_origins`. Un solo valor sigue igual. Permite sumar la URL de un preview de Vercel sin tocar código. Documentado en `docs/deploy.md`.
 
 ## F14 — Calidad transversal
 - [ ] F14.1 (B/O) Pipeline end-to-end reproducible con un solo comando, desde snapshot hasta modelo y métricas
